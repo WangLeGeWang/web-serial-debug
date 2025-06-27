@@ -4,6 +4,7 @@ import SerialConfig from './components/SerialConfig.vue'
 import SerialLog from './components/SerialLog.vue'
 import PipelinePanel from './components/PipelinePanel.vue'
 import ChartIMU from './components/ChartIMU.vue'
+import ChartRocket from './components/ChartRocket.vue'
 import Sim from './sim/Sim.vue'
 import ChartPanel from './components/ChartPanel.vue'
 import DataTable from './components/DataTable.vue'
@@ -105,6 +106,9 @@ handleResize()
             </el-tab-pane>
             <el-tab-pane label="模拟" lazy>
               <Sim />
+            </el-tab-pane>
+            <el-tab-pane label="火箭" lazy>
+              <ChartRocket />
             </el-tab-pane>
           </el-tabs>
         </Pane>

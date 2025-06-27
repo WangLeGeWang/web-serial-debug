@@ -4,7 +4,13 @@
 
 ## Demo
 
-![Image](./docs/preview.png "LV GUI Builder Preview")
+<table>
+<tr>
+    <td><img src="./docs/1.png" title="Serial Debugger Preview" /></td>
+    <td><img src="./docs/2.png" title="Serial Debugger Preview" /></td>
+    <td><img src="./docs/3.png" title="Serial Debugger Preview" /></td>
+</tr>
+</table>
 
 
 ## 功能特点
@@ -44,9 +50,14 @@ yarn build
 yarn preview
 ```
 
+## 参考
+
 https://github.com/devanlai/webstlink
 https://v2.tauri.app/zh-cn/start/
 https://github.com/mateosolinho/AeroTelemProc_VidData/tree/main
+https://github.com/Serial-Studio/Serial-Studio
+https://github.com/klonyyy/MCUViewer
+
 
 ## 许可证
 

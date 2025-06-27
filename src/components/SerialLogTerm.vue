@@ -83,7 +83,7 @@ const initTerminal = () => {
 
 \x1b[0m
 \x1b[35m=== Serial Tool ===\x1b[0m
-\x1b[32m版本: v2.1.0\x1b[0m
+\x1b[32m版本: v2.2.0\x1b[0m
 \x1b[0m
 功能特点:
 - 🔌 支持串口和WebUSB设备连接
