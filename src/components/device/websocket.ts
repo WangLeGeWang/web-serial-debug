@@ -36,7 +36,7 @@ export const request = async () => {
 export const connectDevice = async (_: Device) => {
   try {
   } catch (error) {
-    ElMessage.error('串口连接失败：' + error)
+    ElMessage.error('设备连接失败：' + error)
     console.log(error)
   }
   return null

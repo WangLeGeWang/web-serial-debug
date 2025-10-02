@@ -121,7 +121,7 @@ export class SerialHelper {
 
   public async addToSendQueue(data: Uint8Array): Promise<void> {
     if (!this.isConnected) {
-      throw new Error('串口未连接');
+      throw new Error('设备未连接');
     }
 
     if (this.sendQueue.length >= this.maxQueueSize) {

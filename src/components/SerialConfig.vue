@@ -37,9 +37,9 @@ const handleConfigChange = async () => {
       if (device) {
         await connectDevice(device)
       }
-      // ElMessage.success('串口参数已更新')
+      // ElMessage.success('设备参数已更新')
     } catch (error) {
-      ElMessage.error('更新串口参数失败：' + error)
+      ElMessage.error('更新设备参数失败：' + error)
     }
   }
 }
@@ -68,6 +68,7 @@ const handleDeviceAuthorize = async () => {
       break
     case 'mock':
       device = await DeviceMockIMU.request()
+      break
     case 'websocket':
       break
     case 'webstlink':
@@ -106,7 +107,7 @@ const connectDevice = async (device: Device) => {
     serialWriter.value = port.writer
     serialReader.value = port.reader
     isConnected.value = true
-    ElMessage.success('串口连接成功')
+    ElMessage.success('设备连接成功')
     startReading()
     selectedDeviceId.value = device.id
   } else {
@@ -150,7 +151,7 @@ const startReading = async () => {
       }
       DataEmit(value)
     } catch (error) {
-      ElMessage.error('读取串口数据失败：' + error)
+      ElMessage.error('读取设备数据失败：' + error)
       break
     }
   }

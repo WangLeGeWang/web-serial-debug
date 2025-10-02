@@ -89,11 +89,11 @@ handleResize()
             <el-tab-pane label="控制台">
               <SerialLog />
             </el-tab-pane>
-            <el-tab-pane label="姿态" lazy>
-              <ChartIMU />
-            </el-tab-pane>
             <el-tab-pane label="数据表" lazy>
               <DataTable />
+            </el-tab-pane>
+            <el-tab-pane label="姿态" lazy>
+              <ChartIMU />
             </el-tab-pane>
             <el-tab-pane label="可视化" lazy>
               <ChartPanel />
@@ -101,10 +101,10 @@ handleResize()
             <el-tab-pane label="流程图">
               <PipelinePanel />
             </el-tab-pane>
-            <el-tab-pane label="模拟" lazy>
+            <el-tab-pane label="模拟发射" lazy>
               <Sim />
             </el-tab-pane>
-            <el-tab-pane label="火箭" lazy>
+            <el-tab-pane label="水火箭" lazy>
               <ChartRocket />
             </el-tab-pane>
             <el-tab-pane label="画板" lazy>
