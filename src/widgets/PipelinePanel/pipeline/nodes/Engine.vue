@@ -1,8 +1,21 @@
 <template>
   <div class="custom-node engine" :class="{ selected: props.selected }">
     <NodeResizer :min-width="100" :min-height="120" />
-    <Handle id="fuel" type="target" :position='"left" as any' class="handle" />
-    <Handle id="oxidizer" type="source" :position='"right" as any' class="handle" />
+    <template v-if="handles.length > 0">
+      <Handle
+        v-for="handle in handles"
+        :key="handle.id"
+        :id="handle.id"
+        :type="handle.type"
+        :position="handle.position"
+        class="handle"
+      />
+    </template>
+    <template v-else>
+      <Handle id="fuel" type="target" :position='"left" as any' class="handle" />
+      <Handle id="oxidizer" type="target" :position='"left" as any' class="handle" style="top: 40px" />
+      <Handle id="output" type="source" :position='"right" as any' class="handle" />
+    </template>
 
     <NodeToolbar>
       <el-button size="small" @click="updateValue('START')">点火</el-button>
@@ -19,11 +32,18 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { NodeResizer } from '@vue-flow/node-resizer'
 import { NodeToolbar } from '@vue-flow/node-toolbar'
 import { Handle } from '@vue-flow/core'
 import { ElButton } from 'element-plus'
 import './style.css'
+
+interface HandleConfig {
+  id: string
+  type: 'target' | 'source'
+  position: 'top' | 'bottom' | 'left' | 'right'
+}
 
 const props = defineProps<{
   id: string
@@ -33,15 +53,18 @@ const props = defineProps<{
     thrust?: string
     chamber_pressure?: string
     mixture_ratio?: string
+    handles?: HandleConfig[]
   }
 }>()
 
+const handles = computed(() => props.data?.handles || [])
+
 const emit = defineEmits<{
-  (e: 'update', id: string, value: string): void
+  (e: 'update', value: string): void
 }>()
 
 function updateValue(value: string) {
-  emit('update', props.id, value)
+  emit('update', value)
 }
 </script>
 

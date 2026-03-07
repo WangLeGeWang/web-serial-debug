@@ -1,7 +1,19 @@
 <template>
   <div class="custom-node tank pressurant" :class="{ selected: props.selected }">
     <NodeResizer :min-width="70" :min-height="90" />
-    <Handle id="output" type="source" :position='"bottom" as any' class="handle" />
+    <template v-if="handles.length > 0">
+      <Handle
+        v-for="handle in handles"
+        :key="handle.id"
+        :id="handle.id"
+        :type="handle.type"
+        :position="handle.position"
+        class="handle"
+      />
+    </template>
+    <template v-else>
+      <Handle id="output" type="source" :position='"bottom" as any' class="handle" />
+    </template>
     <NodeToolbar>
       <el-button size="small" @click="updateValue('FILL')">充气</el-button>
       <el-button size="small" @click="updateValue('VENT')">排气</el-button>
@@ -15,11 +27,18 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { NodeResizer } from '@vue-flow/node-resizer'
 import { NodeToolbar } from '@vue-flow/node-toolbar'
 import { Handle } from '@vue-flow/core'
 import { ElButton } from 'element-plus'
 import './style.css'
+
+interface HandleConfig {
+  id: string
+  type: 'target' | 'source'
+  position: 'top' | 'bottom' | 'left' | 'right'
+}
 
 const props = defineProps<{
   id: string
@@ -28,15 +47,18 @@ const props = defineProps<{
     label?: string
     pressure?: string
     temperature?: string
+    handles?: HandleConfig[]
   }
 }>()
 
+const handles = computed(() => props.data?.handles || [])
+
 const emit = defineEmits<{
-  (e: 'update', id: string, value: string): void
+  (e: 'update', value: string): void
 }>()
 
 function updateValue(value: string) {
-  emit('update', props.id, value)
+  emit('update', value)
 }
 </script>
 

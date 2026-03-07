@@ -24,11 +24,11 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  (e: 'update', id: string, value: string): void
+  (e: 'update', value: string): void
 }>()
 
 function updateValue(value: string) {
-  emit('update', props.id, value)
+  emit('update', value)
 }
 </script>
 

@@ -31,7 +31,7 @@
       </el-button-group>
     </div>
 
-    <NodeConfigDialog v-model="nodeConfigVisible" @confirm="onNodeConfigConfirm" />
+    <NodeConfigDialog v-model="nodeConfigVisible" :edit-data="editingNode" @confirm="onNodeConfigConfirm" />
 
     <el-dialog v-model="edgeDialogVisible" title="编辑连接线样式" width="400px">
       <el-form :model="edgeForm">
@@ -59,6 +59,7 @@
       :max-zoom="4"
       class="pipeline-canvas"
       @nodeClick="onNodeClick"
+      @nodeDoubleClick="onNodeDoubleClick"
       @paneClick="onPaneClick"
       @edgeClick="onEdgeClick"
     >
@@ -124,13 +125,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, onUnmounted } from 'vue'
 import { ElButton, ElButtonGroup, ElDialog, ElForm, ElFormItem, ElSelect, ElOption, ElColorPicker, ElInputNumber } from 'element-plus'
 import { VueFlow, useVueFlow, type GraphNode } from '@vue-flow/core'
 import { Background } from '@vue-flow/background'
 import { Controls } from '@vue-flow/controls'
 import { MiniMap } from '@vue-flow/minimap'
 import { NodeResizer } from '@vue-flow/node-resizer'
+import { EventCenter, EventNames } from '../../utils/EventCenter'
 // import { NodeToolbar } from '@vue-flow/node-toolbar'
 import NodeConfigDialog from './pipeline/NodeConfigDialog.vue'
 import CustomNode from './pipeline/nodes/CustomNode.vue'
@@ -161,11 +163,8 @@ const {
   nodes,
   edges,
   addNodes,
-  getNode,
   setNodes,
-  // getNodes,
   addEdges,
-  // getEdges,
   setEdges,
   project,
   // @ts-ignore
@@ -174,6 +173,7 @@ const {
 
 // 组件配置对话框
 const nodeConfigVisible = ref(false)
+const editingNode = ref(null)
 
 // 连接线编辑相关状态
 const selectedEdge = ref(null as GraphNode | null)
@@ -240,37 +240,37 @@ const defaultDemo = [
     id: 'pressurant-1',
     type: 'pressurant',
     position: { x: 100, y: 40 },
-    data: { label: '氦气瓶', pressure: '30.0', temperature: '25.0' }
+    data: { label: '氦气瓶', pressure: '30.0', temperature: '25.0', dataKey: 'he_pressure' }
   },
   {
     id: 'pressure-1',
     type: 'pressure',
     position: { x: 100, y: 150 },
-    data: { label: 'P1', value: '30.0' }
+    data: { label: 'P1 - 氦气出口', value: '30.0', unit: 'MPa', dataKey: 'he_pressure' }
   },
   {
     id: 'regulator-1',
     type: 'regulator',
     position: { x: 100, y: 260 },
-    data: { label: '主调压阀', setpoint: '2.0' }
+    data: { label: '主调压阀', setpoint: '2.0', dataKey: 'regulator_setpoint' }
   },
   {
     id: 'pressure-2',
     type: 'pressure',
     position: { x: 100, y: 350 },
-    data: { label: 'P2', value: '2.0' }
+    data: { label: 'P2 - 调压后压力', value: '2.0', unit: 'MPa', dataKey: 'main_pressure' }
   },
   {
     id: 'oxidizer-1',
     type: 'oxidizer',
     position: { x: 300, y: 100 },
-    data: { label: '液氧罐', pressure: '1.8', temperature: '-183.0', level: '95' }
+    data: { label: '液氧罐', pressure: '1.8', temperature: '-183.0', level: '95', dataKey: 'lox_tank' }
   },
   {
     id: 'temperature-1',
     type: 'temperature',
     position: { x: 300, y: 230 },
-    data: { label: 'T1', value: '-183.0' }
+    data: { label: 'T1 - 液氧温度', value: '-183.0', unit: '℃', dataKey: 'lox_temperature' }
   },
   {
     id: 'check_valve-1',
@@ -282,25 +282,25 @@ const defaultDemo = [
     id: 'valve-1',
     type: 'valve',
     position: { x: 300, y: 420 },
-    data: { label: '氧化剂阀' }
+    data: { label: '氧化剂阀', dataKey: 'lox_valve_state' }
   },
   {
     id: 'flow-1',
     type: 'flow',
     position: { x: 300, y: 520 },
-    data: { label: 'F1', value: '0.0' }
+    data: { label: 'F1 - 氧化剂流量', value: '0.0', unit: 'kg/s', dataKey: 'lox_flow' }
   },
   {
     id: 'fuel-1',
     type: 'fuel',
     position: { x: 500, y: 100 },
-    data: { label: '煤油罐', pressure: '1.8', temperature: '15.0', level: '95' }
+    data: { label: '煤油罐', pressure: '1.8', temperature: '15.0', level: '95', dataKey: 'rp1_tank' }
   },
   {
     id: 'temperature-2',
     type: 'temperature',
     position: { x: 500, y: 230 },
-    data: { label: 'T2', value: '15.0' }
+    data: { label: 'T2 - 煤油温度', value: '15.0', unit: '℃', dataKey: 'rp1_temperature' }
   },
   {
     id: 'check_valve-2',
@@ -312,19 +312,19 @@ const defaultDemo = [
     id: 'valve-2',
     type: 'valve',
     position: { x: 500, y: 420 },
-    data: { label: '燃料阀' }
+    data: { label: '燃料阀', dataKey: 'rp1_valve_state' }
   },
   {
     id: 'flow-2',
     type: 'flow',
     position: { x: 500, y: 520 },
-    data: { label: 'F2', value: '0.0' }
+    data: { label: 'F2 - 燃料流量', value: '0.0', unit: 'kg/s', dataKey: 'rp1_flow' }
   },
   {
     id: 'engine-1',
     type: 'engine',
     position: { x: 325, y: 660 },
-    data: { label: '主发动机', thrust: '0.0', chamber_pressure: '0.0', mixture_ratio: '2.5' }
+    data: { label: '主发动机', thrust: '0.0', chamber_pressure: '0.0', mixture_ratio: '2.5', dataKey: 'engine' }
   }
 ]
 
@@ -348,11 +348,15 @@ const defaultEdges = [
 ]
 
 // 更新组件数据
-function updateComponentValue(id: string, value: string) {
-  // @ts-ignore
-  const node = getNode(id)
-  if (node) {
-    node.data = { ...node.data, value }
+function updateComponentValue(value: string) {
+  if (selectedNode.value) {
+    // @ts-ignore
+    selectedNode.value.data = { ...selectedNode.value.data, value }
+    // @ts-ignore
+    const node = nodes.value.find((n: any) => n.id === selectedNode.value.id)
+    if (node) {
+      node.data = { ...node.data, value }
+    }
     saveState()
   }
 }
@@ -377,23 +381,82 @@ function showNodeConfig() {
 
 // 处理组件配置确认
 function onNodeConfigConfirm(config: any) {
-  const position = project({ x: 100, y: 100 })
-  const newNode = {
-    id: `custom-${Date.now()}`,
-    type: 'custom',
-    position,
-    data: {
-      ...config,
-      label: config.label || '自定义组件'
+  if (config.id) {
+    // 编辑现有节点 - 从 nodes 数组中查找
+    // @ts-ignore
+    const node = nodes.value.find((n: any) => n.id === config.id)
+    if (node) {
+      node.data = {
+        ...node.data,
+        label: config.label,
+        dataKey: config.dataKey,
+        unit: config.unit,
+        pressureKey: config.pressureKey,
+        temperatureKey: config.temperatureKey,
+        levelKey: config.levelKey,
+        positionKey: config.positionKey,
+        thrustKey: config.thrustKey,
+        chamberPressureKey: config.chamberPressureKey,
+        mixtureRatioKey: config.mixtureRatioKey,
+        setpointKey: config.setpointKey,
+        threshold: config.threshold,
+        handles: config.handles
+      }
     }
+    editingNode.value = null
+  } else {
+    // 添加新节点
+    const position = project({ x: 100 + Math.random() * 200, y: 100 + Math.random() * 200 })
+    const newNode = {
+      id: `${config.type}-${Date.now()}`,
+      type: config.type,
+      position,
+      data: {
+        label: config.label || getDefaultLabel(config.type),
+        dataKey: config.dataKey,
+        unit: config.unit,
+        pressureKey: config.pressureKey,
+        temperatureKey: config.temperatureKey,
+        levelKey: config.levelKey,
+        positionKey: config.positionKey,
+        thrustKey: config.thrustKey,
+        chamberPressureKey: config.chamberPressureKey,
+        mixtureRatioKey: config.mixtureRatioKey,
+        setpointKey: config.setpointKey,
+        threshold: config.threshold,
+        handles: config.handles
+      }
+    }
+    addNodes([newNode])
   }
-  addNodes([newNode])
   saveState()
 }
 
-// 节点点击
+function getDefaultLabel(type: string): string {
+  const labels: Record<string, string> = {
+    fuel: '燃料罐',
+    oxidizer: '氧化剂罐',
+    pressurant: '增压气罐',
+    valve: '阀门',
+    check_valve: '单向阀',
+    regulator: '调压阀',
+    pressure: '压力传感器',
+    temperature: '温度传感器',
+    flow: '流量传感器',
+    engine: '发动机'
+  }
+  return labels[type] || '组件'
+}
+
+// 节点点击 - 单击选中，双击编辑
 function onNodeClick({ node }: any) {
   selectedNode.value = node
+}
+
+// 双击节点编辑
+function onNodeDoubleClick({ node }: any) {
+  editingNode.value = JSON.parse(JSON.stringify(node))
+  nodeConfigVisible.value = true
 }
 
 // 画布点击
@@ -509,12 +572,44 @@ defineExpose({
   setConfig
 })
 
+const eventCenter = EventCenter.getInstance()
+
+// 节点实时值缓存 (dataKey -> value)
+const nodeDataValues = ref<Record<string, Record<string, string>>>({})
+
+// 监听实时数据更新
+function handleDataUpdate(data: Record<string, number>) {
+  // 遍历所有节点，根据 dataKey 匹配更新数值
+  // @ts-ignore
+  nodes.value.forEach((node: any) => {
+    const dataKey = node.data?.dataKey
+    if (dataKey && data[dataKey] !== undefined) {
+      const numValue = data[dataKey]
+      // 格式化数值
+      let displayValue = String(numValue)
+      if (!isNaN(numValue)) {
+        displayValue = numValue.toFixed(2)
+      }
+      // 更新节点数据
+      node.data = { ...node.data, value: displayValue }
+      // 缓存值
+      if (!nodeDataValues.value[node.id]) {
+        nodeDataValues.value[node.id] = {}
+      }
+      nodeDataValues.value[node.id][dataKey] = displayValue
+    }
+  })
+}
+
 // 初始化默认演示
 onMounted(() => {
   // 添加默认节点
   addNodes(defaultDemo)
   // 添加默认连接
   addEdges(defaultEdges)
+
+  // 监听实时数据更新事件
+  eventCenter.on(EventNames.DATA_UPDATE, handleDataUpdate)
 
   // 键盘快捷键
   window.addEventListener('keydown', (e) => {
@@ -533,6 +628,12 @@ onMounted(() => {
       }
     }
   })
+})
+
+// 组件卸载时清理事件监听
+onUnmounted(() => {
+  eventCenter.off(EventNames.DATA_UPDATE, handleDataUpdate)
+  window.removeEventListener('keydown', () => {})
 })
 </script>
 
