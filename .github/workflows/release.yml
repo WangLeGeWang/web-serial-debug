@@ -76,9 +76,16 @@ jobs:
           go build -v -ldflags "-X main.version=${{ steps.version.outputs.VERSION }}" -o ${{ matrix.artifact_name }}
 
       - name: Create release asset
+        if: matrix.os != 'windows-latest'
         run: |
           cd window
           zip -r ${{ matrix.asset_name }} ${{ matrix.artifact_name }} ./dist
+
+      - name: Create release asset (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          cd window
+          powershell -Command "Compress-Archive -Path ${{ matrix.artifact_name }},dist -DestinationPath ${{ matrix.asset_name }}"
 
       - name: Upload release asset
         uses: softprops/action-gh-release@v1
