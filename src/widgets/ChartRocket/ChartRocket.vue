@@ -1,25 +1,20 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed, nextTick, watch } from 'vue'
-// @ts-ignore
+
 import * as THREE from 'three'
-// @ts-ignore
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
-// @ts-ignore
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader'
-// @ts-ignore
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader'
 import { useDark } from '@vueuse/core'
 import { ElMessage } from 'element-plus'
-// @ts-ignore
 import Stats from 'stats.js'
-// @ts-ignore
 import particleFire from 'three-particle-fire'
 import katex from 'katex'
 import 'katex/dist/katex.min.css'
 try { particleFire.install( { THREE: THREE } ); } catch (e) { }
 
-import { WaterRocketPhysics } from '../utils/WaterRocketPhysics'
-import { MultiStageRocketPhysics } from '../utils/MultiStageRocketPhysics'
+import { WaterRocketPhysics } from '../../utils/WaterRocketPhysics'
+import { MultiStageRocketPhysics } from '../../utils/MultiStageRocketPhysics'
 
 interface Props {
   readonly?: boolean

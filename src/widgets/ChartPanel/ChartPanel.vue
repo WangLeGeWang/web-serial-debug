@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { ElMessage } from 'element-plus'
-import { useFieldStore } from '../store/fieldStore'
-import { ConfigManager } from '../utils/ConfigManager'
-import LineChart from './charts/LineChart.vue'
-import { EventCenter, EventNames } from '../utils/EventCenter'
+import { useFieldStore } from '../../store/fieldStore'
+import { ConfigManager } from '../../utils/ConfigManager'
+import LineChart from './LineChart.vue'
+import { EventCenter, EventNames } from '../../utils/EventCenter'
 
 interface Props {
   readonly?: boolean

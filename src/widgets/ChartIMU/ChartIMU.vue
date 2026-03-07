@@ -1,22 +1,17 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue'
-// @ts-ignore
+
 import * as THREE from 'three'
-// @ts-ignore
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
-// @ts-ignore
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader'
-// @ts-ignore
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader'
 import { useDark } from '@vueuse/core'
 import { ElMessage } from 'element-plus'
-// @ts-ignore
 import Stats from 'stats.js'
-// @ts-ignore
 import particleFire from 'three-particle-fire';
 try { particleFire.install( { THREE: THREE } ); } catch (e) { }
 
-import { EventCenter, EventNames } from '../utils/EventCenter'
+import { EventCenter, EventNames } from '../../utils/EventCenter'
 
 interface Props {
   readonly?: boolean
