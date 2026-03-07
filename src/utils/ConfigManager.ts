@@ -42,6 +42,12 @@ interface ChartConfig {
   fields: string[]
 }
 
+interface WebSocketConfig {
+  url: string
+  reconnect: boolean
+  reconnectInterval: number
+}
+
 interface CanvasConfig {
   items: {
     id: number
@@ -63,6 +69,12 @@ const defaultConfigs = {
     parity: 'none',
     flowControl: 'none'
   } as SerialConfig,
+  
+  websocket: {
+    url: 'ws://localhost:8080',
+    reconnect: false,
+    reconnectInterval: 3000
+  } as WebSocketConfig,
   
   display: {
     showTime: true,

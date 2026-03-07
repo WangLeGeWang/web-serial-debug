@@ -24,7 +24,7 @@ export interface Device extends IDevice {
   id: string
   title: string
   type: string
-  port: SerialPort | USBDevice | BluetoothDevice
+  port: SerialPort | USBDevice | BluetoothDevice | WebSocket
 }
 
 export const authorizedDevices = ref<Device[]>([])
