@@ -25,6 +25,18 @@ if ('serviceWorker' in navigator) {
       // @ts-ignore
       .then(registration => {
         console.log('ServiceWorker registration successful');
+        registration.addEventListener('updatefound', () => {
+          const newWorker = registration.installing;
+          if (newWorker) {
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                if (confirm('有新版本可用，是否刷新页面？')) {
+                  window.location.reload();
+                }
+              }
+            });
+          }
+        });
       })
       .catch(error => {
         console.error('ServiceWorker registration failed:', error);

@@ -1,1 +1,21 @@
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true" role="img" class="iconify iconify--logos" width="37.07" height="36" preserveAspectRatio="xMidYMid meet" viewBox="0 0 256 198"><path fill="#41B883" d="M204.8 0H256L128 220.8L0 0h97.92L128 51.2L157.44 0h47.36Z"></path><path fill="#41B883" d="m0 0l128 220.8L256 0h-51.2L128 132.48L50.56 0H0Z"></path><path fill="#35495E" d="M50.56 0L128 133.12L204.8 0h-47.36L128 51.2L97.92 0H50.56Z"></path></svg>
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- 主总线（加粗+拉长，占满画布宽度） -->
+  <line x1="20" y1="100" x2="180" y2="100" stroke="#0066FF" stroke-width="8" stroke-linecap="round"/>
+  
+  <!-- 挂载节点（放大+下移，占比大幅提升） -->
+  <g stroke="#0066FF" stroke-width="6" stroke-linecap="round" fill="#0066FF">
+    <!-- 节点1 -->
+    <line x1="50" y1="100" x2="50" y2="60"/>
+    <circle cx="50" cy="60" r="10"/>
+    <!-- 核心节点（更大，视觉焦点） -->
+    <line x1="100" y1="100" x2="100" y2="60"/>
+    <circle cx="100" cy="60" r="14"/>
+    <!-- 节点3 -->
+    <line x1="150" y1="100" x2="150" y2="60"/>
+    <circle cx="150" cy="60" r="10"/>
+  </g>
+  
+  <!-- 数据传输点（放大，更醒目） -->
+  <circle cx="75" cy="100" r="6" fill="#0066FF"/>
+  <circle cx="125" cy="100" r="6" fill="#0066FF"/>
+</svg>
