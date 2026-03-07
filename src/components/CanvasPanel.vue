@@ -172,9 +172,23 @@ const handleResize = () => {
   window.dispatchEvent(new CustomEvent('resize'))
 }
 
-// @ts-ignore
+const editDialogVisible = ref(false)
+const editingItem = ref<CanvasItem | null>(null)
+
 const editItem = (item: CanvasItem) => {
-  // TODO: 实现编辑功能
+  editingItem.value = { ...item }
+  editDialogVisible.value = true
+}
+
+const saveEdit = () => {
+  if (editingItem.value) {
+    const index = items.value.findIndex(i => i.id === editingItem.value!.id)
+    if (index !== -1) {
+      items.value[index] = { ...editingItem.value }
+      saveLayout()
+    }
+  }
+  editDialogVisible.value = false
 }
 
 // @ts-ignore
@@ -255,6 +269,18 @@ const viewItem = (item: CanvasItem) => {
       </grid-layout>
       <TimeRangeControl class="time-range-control" />
     </div>
+
+    <el-dialog v-model="editDialogVisible" title="编辑标题" width="400px">
+      <el-form label-width="80px">
+        <el-form-item label="标题">
+          <el-input v-model="editingItem!.title" placeholder="请输入标题" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="editDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="saveEdit">确定</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -264,6 +290,7 @@ const viewItem = (item: CanvasItem) => {
   display: flex;
   flex-direction: column;
   background: var(--el-bg-color);
+  padding-bottom: 140px;
 }
 
 .toolbar {
@@ -361,7 +388,7 @@ const viewItem = (item: CanvasItem) => {
 }
 
 .time-range-control {
-  position: sticky;
+  position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
