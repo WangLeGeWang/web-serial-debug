@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { useDashboardStore } from '../store/dashboardStore'
+import { useDashboardStore } from '@/store/dashboardStore'
 
 const dashboardStore = useDashboardStore()
 

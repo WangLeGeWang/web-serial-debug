@@ -3,7 +3,7 @@ import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import uPlot from 'uplot'
 import 'uplot/dist/uPlot.min.css'
 import { useDark } from '@vueuse/core'
-import { useDataStore } from '../store/dataStore'
+import { useDataStore } from '@/store/dataStore'
 
 const dataStore = useDataStore()
 const isDark = useDark()

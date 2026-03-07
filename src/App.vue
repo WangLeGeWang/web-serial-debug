@@ -10,7 +10,7 @@ import ChartPanel from './widgets/ChartPanel/ChartPanel.vue'
 import DataTable from './components/DataTable.vue'
 import SerialQuickSend from './components/SerialQuickSend.vue'
 import SerialScripts from './components/SerialScript.vue'
-import CanvasPanel from './components/CanvasPanel.vue'
+import CanvasPanel from './components/canvasPanel/CanvasPanel.vue'
 import { useDark, useToggle } from '@vueuse/core'
 // @ts-ignore
 import { Splitpanes, Pane } from 'splitpanes'
