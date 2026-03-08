@@ -13,6 +13,8 @@ import * as DeviceMockIMU from '../devices/mock-imu'
 import * as DeviceWebUSB from '../devices/webusb'
 import * as DeviceBluetooth from '../devices/bluetooth'
 import * as DeviceWebSocket from '../devices/websocket'
+import * as DeviceWebSTLink from '../devices/webstlink'
+import * as DeviceDAPLink from '../devices/daplink'
 import { DesktopSerialDevice } from '../devices/desktop'
 
 const configManager = ConfigManager.getInstance()
@@ -99,8 +101,12 @@ const handleDeviceAuthorize = async () => {
       device = await DeviceWebSocket.request(wsConfig.value.url)
       break
     case 'webstlink':
+      device = await DeviceWebSTLink.request()
+      break
+    case 'daplink':
+      device = await DeviceDAPLink.request()
+      break
     case 'script':
-    case 'dap':
     case 'adb':
       ElMessage.warning('该设备类型开发中')
       selectedDeviceId.value = ''
@@ -316,11 +322,11 @@ const handleConenctClick = async () => {
             </template>
             <el-option-group label="其他">
               <el-option label="WebSocket" value="websocket"></el-option>
+              <el-option label="ST-Link" value="webstlink"></el-option>
+              <el-option label="DAPLink" value="daplink"></el-option>
               <el-option label="脚本" value="script"></el-option>
-              <el-option label="Stlink" value="webstlink"></el-option>
-              <el-option label="DAP" value="dap"></el-option>
-              <el-option label="adb" value="adb"></el-option>
               <el-option label="模拟数据(IMU)" value="mock"></el-option>
+              <!-- <el-option label="adb" value="adb"></el-option> -->
             </el-option-group>
           </el-select>
         </div>

@@ -25,6 +25,7 @@
     "@vue-flow/node-toolbar": "^1.1.0",
     "@vueuse/core": "^12.5.0",
     "@xterm/addon-search": "^0.15.0",
+    "dapjs": "^2.3.0",
     "element-plus": "^2.9.3",
     "grid-layout-plus": "^1.0.6",
     "katex": "^0.16.21",
@@ -46,7 +47,7 @@
     "@vue/tsconfig": "^0.7.0",
     "typescript": "~5.7.2",
     "vite": "^6.1.0",
-    "ws": "^8.19.0",
-    "vue-tsc": "^2.2.0"
+    "vue-tsc": "^2.2.0",
+    "ws": "^8.19.0"
   }
 }
