@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
 import SerialLog from './components/SerialLog.vue'
 import PipelinePanel from './widgets/PipelinePanel/PipelinePanel.vue'
 import ChartIMU from './widgets/ChartIMU/ChartIMU.vue'
@@ -21,6 +21,16 @@ import type { LayoutConfig } from './components/types'
 
 const workspaceManager = WorkspaceManagerInst
 
+const defaultLayoutConfig: LayoutConfig = {
+  splitPaneSize: 75,
+  leftActiveTab: '0',
+  rightActiveTab: '0'
+}
+
+const { config: localLayoutConfig } = useWorkspaceConfig<LayoutConfig>('layout', defaultLayoutConfig)
+
+const splitpanesKey = ref(0)
+
 onMounted(() => {
   const urlParams = new URLSearchParams(window.location.search)
   const workspaceId = urlParams.get('workspace')
@@ -30,15 +40,10 @@ onMounted(() => {
       workspaceManager.setActiveWorkspace(workspaceId)
     }
   }
+  setTimeout(() => {
+    splitpanesKey.value++
+  }, 100)
 })
-
-const defaultLayoutConfig: LayoutConfig = {
-  splitPaneSize: 75,
-  leftActiveTab: '0',
-  rightActiveTab: '0'
-}
-
-const { config: localLayoutConfig } = useWorkspaceConfig<LayoutConfig>('layout', defaultLayoutConfig)
 
 const isDark = useDark({
   initialValue: 'dark',
@@ -60,7 +65,6 @@ const toggleFullscreen = () => {
 
 const handleSplitResize = (options: { size: number}[]) => {
   localLayoutConfig.value.splitPaneSize = options[0].size
-  handleResize()
 }
 
 const handleTabChange = () => {
@@ -103,7 +107,7 @@ handleResize()
       </div>
     </el-header>
     <el-container class="main-container">
-      <Splitpanes class="default-theme" @resize="handleSplitResize">
+      <Splitpanes class="default-theme" :key="splitpanesKey" @resize="handleSplitResize">
         <Pane :size="localLayoutConfig.splitPaneSize" class="w75">
           <el-tabs type="card" class="lv-card lv-tabs" addable v-model="localLayoutConfig.leftActiveTab" @tab-click="handleTabChange">
             <el-tab-pane label="控制台">
@@ -350,6 +354,9 @@ html.dark .el-button {
 }
 </style>
 <style>
+.splitpanes--vertical .splitpanes__pane {
+  transition: none;
+}
 .splitpanes.default-theme .splitpanes__pane {
   background-color: var(--el-bg-color-overlay);
 }

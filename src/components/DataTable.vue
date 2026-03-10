@@ -1,37 +1,37 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted } from 'vue'
-import { useFieldStore } from '../store/fieldStore'
+import { useDataStore } from '../store/fieldStore'
 
 import { EventCenter, EventNames } from '../utils/EventCenter'
 
 const eventCenter = EventCenter.getInstance()
 
-const fieldStore = useFieldStore()
+const dataStore = useDataStore()
 
 
 const handleDataKey = (data: any) => {
   if (typeof data !== 'object' || data === null) return
 
   Object.entries(data).forEach(([key, value]) => {
-    const existingField = fieldStore.fields.find(f => f.key === key)
+    const existingField = dataStore.fields.find(f => f.key === key)
     if (existingField) {
-      fieldStore.updateField(existingField, value)
+      dataStore.updateField(existingField, value)
     } else {
-      fieldStore.fields.push(fieldStore.createField(key, value))
+      dataStore.fields.push(dataStore.createField(key, value))
     }
   })
 }
 
 const addNewField = () => {
-  fieldStore.createField('new_field', '')
+  dataStore.createField('new_field', '')
 }
 
 const updateField = () => {
-  fieldStore.saveToProfile()
+  dataStore.saveToProfile()
 }
 
 const resetData = () => {
-  fieldStore.fields.forEach(field => {
+  dataStore.fields.forEach(field => {
     field.value = ''
     field.avg = null
     field.avgSum = null
@@ -40,11 +40,11 @@ const resetData = () => {
     field.updateCount = 0
     field.lastUpdate = 0
   })
-  fieldStore.saveToProfile()
+  dataStore.saveToProfile()
 }
 
 onMounted(() => {
-  fieldStore.loadFromProfile()
+  dataStore.loadFromProfile()
   eventCenter.on(EventNames.DATA_UPDATE, handleDataKey)
 })
 
@@ -67,7 +67,7 @@ onUnmounted(() => {
         <div class="flow-step">
           <div class="step-number">1</div>
           <div class="step-content">
-            <b>数据采集：</b>设备（串口/USB/蓝牙等）采集数据并发送
+            <b>数据采集：</b>设备（串口/USB/蓝牙等）采集数据
           </div>
         </div>
         <div class="flow-step">
@@ -98,8 +98,8 @@ onUnmounted(() => {
         </el-button>
         <template #dropdown>
           <el-dropdown-menu>
-            <el-dropdown-item v-for="(_, key) in fieldStore.columnVisibility" :key="key">
-              <el-checkbox v-model="fieldStore.columnVisibility[key]" @change="fieldStore.toggleColumnVisibility()">
+            <el-dropdown-item v-for="(_, key) in dataStore.columnVisibility" :key="key">
+              <el-checkbox v-model="dataStore.columnVisibility[key]" @change="dataStore.toggleColumnVisibility()">
                 {{ key === 'key' ? 'Key' :
                    key === 'name' ? '字段名' :
                    key === 'unit' ? '单位' :
@@ -120,7 +120,7 @@ onUnmounted(() => {
       </el-dropdown>
       <div class="import-export-buttons">
         <el-button type="primary" size="small" @click="addNewField">添加</el-button>
-        <el-button type="primary" size="small" @click="fieldStore.exportData">导出数据</el-button>
+        <el-button type="primary" size="small" @click="dataStore.exportData">导出数据</el-button>
         <el-button type="primary" size="small" @click="$refs.fileInput.click()">导入数据</el-button>
         <el-button type="warning" size="small" @click="resetData">重置数据</el-button>
         <input
@@ -130,42 +130,42 @@ onUnmounted(() => {
           style="display: none"
           @change="(e: Event) => {
             const file = (e.target as HTMLInputElement).files?.[0]
-            if (file) fieldStore.importData(file)
+            if (file) dataStore.importData(file)
           }"
          />
       </div>
     </div>
 
-    <el-table :data="fieldStore.fields" border stripe>
+    <el-table :data="dataStore.fields" border stripe>
       <el-table-column label="操作" width="60" fixed="left">
         <template #default="{ row }">
           <div class="operation-buttons">
-            <el-button @click="fieldStore.deleteField(row.id)" type="danger" size="small" circle>
+            <el-button @click="dataStore.deleteField(row.id)" type="danger" size="small" circle>
               <el-icon><Delete /></el-icon>
             </el-button>
           </div>
         </template>
       </el-table-column>
 
-      <el-table-column v-if="fieldStore.columnVisibility.key" label="Key" sortable min-width="100">
+      <el-table-column v-if="dataStore.columnVisibility.key" label="Key" sortable min-width="100">
         <template #default="{ row }">
           <el-input v-model="row.key" size="small" @change="updateField" />
         </template>
       </el-table-column>
 
-      <el-table-column v-if="fieldStore.columnVisibility.name" label="字段名" sortable min-width="100">
+      <el-table-column v-if="dataStore.columnVisibility.name" label="字段名" sortable min-width="100">
         <template #default="{ row }">
           <el-input v-model="row.name" size="small" @change="updateField" />
         </template>
       </el-table-column>
 
-      <el-table-column v-if="fieldStore.columnVisibility.unit" label="单位" min-width="60">
+      <el-table-column v-if="dataStore.columnVisibility.unit" label="单位" min-width="60">
         <template #default="{ row }">
           <el-input v-model="row.unit" size="small" @change="updateField" />
         </template>
       </el-table-column>
 
-      <el-table-column v-if="fieldStore.columnVisibility.dataType" label="数据类型" sortable min-width="80">
+      <el-table-column v-if="dataStore.columnVisibility.dataType" label="数据类型" sortable min-width="80">
         <template #default="{ row }">
           <el-select v-model="row.dataType" size="small" @change="updateField">
             <el-option label="数字" value="number" />
@@ -176,49 +176,49 @@ onUnmounted(() => {
         </template>
       </el-table-column>
 
-      <el-table-column v-if="fieldStore.columnVisibility.description" label="描述" min-width="150">
+      <el-table-column v-if="dataStore.columnVisibility.description" label="描述" min-width="150">
         <template #default="{ row }">
           <el-input v-model="row.description" size="small" @change="updateField" />
         </template>
       </el-table-column>
 
-      <el-table-column v-if="fieldStore.columnVisibility.keyAddr" label="内存地址" sortable min-width="100">
+      <el-table-column v-if="dataStore.columnVisibility.keyAddr" label="内存地址" sortable min-width="100">
         <template #default="{ row }">
           <el-input v-model="row.keyAddr" size="small" @change="updateField" />
         </template>
       </el-table-column>
 
-      <el-table-column v-if="fieldStore.columnVisibility.keySize" label="内存大小" sortable min-width="100">
+      <el-table-column v-if="dataStore.columnVisibility.keySize" label="内存大小" sortable min-width="100">
         <template #default="{ row }">
           <el-input v-model="row.keySize" size="small" @change="updateField" />
         </template>
       </el-table-column>
 
-      <el-table-column v-if="fieldStore.columnVisibility.value" label="当前值" min-width="100">
+      <el-table-column v-if="dataStore.columnVisibility.value" label="当前值" min-width="100">
         <template #default="{ row }">
           <span>{{ row.value }}</span>
         </template>
       </el-table-column>
 
-      <el-table-column v-if="fieldStore.columnVisibility.avg" label="平均值" min-width="100">
+      <el-table-column v-if="dataStore.columnVisibility.avg" label="平均值" min-width="100">
         <template #default="{ row }">
           <span>{{ row.avg ?? '-' }}</span>
         </template>
       </el-table-column>
 
-      <el-table-column v-if="fieldStore.columnVisibility.min" label="最小值" min-width="100">
+      <el-table-column v-if="dataStore.columnVisibility.min" label="最小值" min-width="100">
         <template #default="{ row }">
           <span>{{ row.min ?? '-' }}</span>
         </template>
       </el-table-column>
 
-      <el-table-column v-if="fieldStore.columnVisibility.max" label="最大值" min-width="100">
+      <el-table-column v-if="dataStore.columnVisibility.max" label="最大值" min-width="100">
         <template #default="{ row }">
           <span>{{ row.max ?? '-' }}</span>
         </template>
       </el-table-column>
 
-      <el-table-column v-if="fieldStore.columnVisibility.lastUpdate" label="最后更新" sortable min-width="120">
+      <el-table-column v-if="dataStore.columnVisibility.lastUpdate" label="最后更新" sortable min-width="120">
         <template #default="{ row }">
           <el-tooltip :content="new Date(row.lastUpdate).toLocaleString()" placement="top" effect="dark">
             <span>{{ new Date(row.lastUpdate).toLocaleTimeString() + '.' + String(new Date(row.lastUpdate).getMilliseconds()).padStart(3, '0') }}</span>
@@ -226,7 +226,7 @@ onUnmounted(() => {
         </template>
       </el-table-column>
 
-      <el-table-column v-if="fieldStore.columnVisibility.updateCount" label="更新次数" sortable width="100">
+      <el-table-column v-if="dataStore.columnVisibility.updateCount" label="更新次数" sortable width="100">
         <template #default="{ row }">
           <span>{{ row.updateCount }}</span>
         </template>

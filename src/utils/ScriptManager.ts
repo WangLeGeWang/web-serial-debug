@@ -47,14 +47,22 @@ async function DataReceiver(data) {
 
 // 处理发送的数据
 async function DataSender(data) {
+  // checksum
+  // await sleep(10);
+
   return data;
 }
 
+// 定时发送数据
+setInterval(async () => {
+  const bytes = new Uint8Array(3);
+  // sendHex(bytes);
+}, 1000);
+
 // 支持的函数
-// sendText(text) - 发送文本
-// sendHex(hex) - 发送HEX
-// sleep(ms) - 延时
-// updateDataTable({}) - 更新数据表
+// stringToUint8Array();
+// uint8ArrayToHexString();
+// uint8ArrayToString();
 
 `;
 

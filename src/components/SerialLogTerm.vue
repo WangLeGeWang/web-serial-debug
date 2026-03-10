@@ -4,6 +4,9 @@ import { SerialHelper } from '../utils/SerialHelper'
 import { Terminal } from 'xterm'
 import { FitAddon } from 'xterm-addon-fit'
 import { SearchAddon } from '@xterm/addon-search';
+import { WebLinksAddon } from '@xterm/addon-web-links';
+import { WebglAddon } from '@xterm/addon-webgl';
+
 import { useDark } from '@vueuse/core'
 import 'xterm/css/xterm.css'
 
@@ -74,7 +77,11 @@ const initTerminal = () => {
 
   fitAddon = new FitAddon()
   terminal.loadAddon(fitAddon)
-  
+
+  terminal.loadAddon(new WebLinksAddon());
+
+  terminal.loadAddon(new WebglAddon());
+
   terminal.onData(handleTerminalData)
   
   const terminalElement = document.getElementById('terminal')
@@ -82,16 +89,15 @@ const initTerminal = () => {
     terminal.open(terminalElement)
     // 显示欢迎信息 https://patorjk.com/software/taag/#p=display&f=Big&t=Serial%20Tool
     const logo = `
-\x1b[36m   _____           _       _   _______          _ 
-  / ____|         (_)     | | |__   __|        | |
- | (___   ___ _ __ _  __ _| |    | | ___   ___ | |
-  \\___ \\ / _ \\ '__| |/ _\` | |    | |/ _ \\ / _ \\| |
-  ____) |  __/ |  | | (_| | |    | | (_) | (_) | |
- |_____/ \\___|_|  |_|\\__,_|_|    |_|\\___/ \\___/|_|
-
+\x1b[36m  ____  _    _  _____   _______          _ 
+ |  _ \\| |  | |/ ____| |__   __|        | |
+ | |_) | |  | | (___      | | ___   ___ | |
+ |  _ <| |  | |\\___ \\     | |/ _ \\ / _ \\| |
+ | |_) | |__| |____) |    | | (_) | (_) | |
+ |____/ \\____/|_____/     |_|\\___/ \\___/|_|
 \x1b[0m
-\x1b[35m=== Serial Tool ===\x1b[0m
-\x1b[32m版本: v2.3.0\x1b[0m
+\x1b[35m === BUS Tool ===\x1b[0m
+\x1b[32m 版本: v3.1.0\x1b[0m
 
 `
     terminal.write(logo)

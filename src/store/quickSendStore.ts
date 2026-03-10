@@ -64,7 +64,12 @@ export const useQuickSendStore = defineStore('quickSend', () => {
 
   const groups = ref<QuickSendGroup[]>([])
   const currentGroupId = ref<number>(0)
-  const currentGroup = computed(() => groups.value.find(g => g.id === currentGroupId.value) || groups.value[0])
+  const currentGroup = computed(() => {
+    const found = groups.value.find(g => g.id === currentGroupId.value)
+    if (found) return found
+    if (groups.value.length > 0) return groups.value[0]
+    return { id: 0, name: '默认', items: [] }
+  })
   const autoSendIntervals = ref<Record<number, number>>({})
   const autoSendInterval = ref(1000)
 
@@ -209,8 +214,6 @@ export const useQuickSendStore = defineStore('quickSend', () => {
   watch([groups, currentGroup], () => {
     saveToProfile()
   }, { deep: true })
-
-  loadFromProfile()
 
   return {
     groups,

@@ -75,9 +75,9 @@ export const defaultCanvasConfig: CanvasConfig = {
 export const defaultDisplayConfig: DisplayConfig = {
   showTime: true,
   showMs: false,
-  showHex: true,
+  showHex: false,
   showText: true,
-  showNewline: true,
+  showNewline: false,
   autoScroll: false,
   timeOut: 5
 }

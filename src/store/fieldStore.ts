@@ -87,14 +87,14 @@ export const useFieldStore = defineStore('field', () => {
 
   const loadFromProfile = () => {
     const profile = profileManager.activeProfile
-    if (profile?.config?.fields) {
+    if (profile?.config?.fields && profile.config.fields.length > 0) {
       fields.value = profile.config.fields as DataField[]
     } else {
       fields.value = JSON.parse(JSON.stringify(initDefaultFields))
     }
     
     if (profile?.config?.columnVisibility) {
-      columnVisibility.value = profile.config.columnVisibility as ColumnVisibility
+      columnVisibility.value = { ...defaultColumnVisibility, ...profile.config.columnVisibility }
     } else {
       columnVisibility.value = { ...defaultColumnVisibility }
     }
@@ -182,7 +182,9 @@ export const useFieldStore = defineStore('field', () => {
     saveToProfile()
   }
 
-  loadFromProfile()
+  const toggleColumnVisibility = () => {
+    saveToProfile()
+  }
 
   return {
     fields,
@@ -196,6 +198,9 @@ export const useFieldStore = defineStore('field', () => {
     loadFromProfile,
     saveToProfile,
     setFields,
-    setColumnVisibility
+    setColumnVisibility,
+    toggleColumnVisibility
   }
 })
+
+export const useDataStore = useFieldStore

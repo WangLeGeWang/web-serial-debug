@@ -5,7 +5,7 @@ import { WorkspaceManagerInst } from './ProfileManager'
 export function useWorkspaceConfig<T>(key: string, defaultValue: T) {
   const workspaceManager = WorkspaceManagerInst
   const localConfig = ref<T>({ ...defaultValue as any })
-  const lastWorkspaceId = ref<string | null>(null)
+  const isLoaded = ref(false)
 
   const loadFromProfile = () => {
     const workspace = workspaceManager.activeWorkspace
@@ -14,6 +14,7 @@ export function useWorkspaceConfig<T>(key: string, defaultValue: T) {
     } else {
       localConfig.value = { ...defaultValue as any }
     }
+    isLoaded.value = true
   }
 
   const saveToProfile = useDebounceFn(() => {
@@ -28,25 +29,17 @@ export function useWorkspaceConfig<T>(key: string, defaultValue: T) {
     }
   }, 300)
 
-  const init = () => {
-    loadFromProfile()
-    lastWorkspaceId.value = workspaceManager.activeWorkspaceIdRef.value
-    
-    workspaceManager.onWorkspaceChange(() => {
-      if (workspaceManager.activeWorkspaceIdRef.value !== lastWorkspaceId.value) {
-        lastWorkspaceId.value = workspaceManager.activeWorkspaceIdRef.value
-        loadFromProfile()
-      }
-    })
-  }
+  watch(() => workspaceManager.activeWorkspaceIdRef.value, () => {
+    if (workspaceManager.activeWorkspaceIdRef.value) {
+      loadFromProfile()
+    }
+  }, { immediate: true })
 
   watch(localConfig, () => {
-    saveToProfile()
+    if (isLoaded.value) {
+      saveToProfile()
+    }
   }, { deep: true })
-
-  onMounted(() => {
-    init()
-  })
 
   return {
     config: localConfig

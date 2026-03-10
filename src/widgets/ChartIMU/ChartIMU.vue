@@ -5,6 +5,7 @@ import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader'
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader'
+import { MTLLoader } from 'three/examples/jsm/loaders/MTLLoader'
 import { useDark } from '@vueuse/core'
 import { ElMessage } from 'element-plus'
 import Stats from 'stats.js'
@@ -43,7 +44,7 @@ const modelOptions = [
 const isDark = useDark()
 const sceneBackground = computed(() => isDark.value ? 0x1a1a1a : 0xf0f0f0)
 const gridColor = computed(() => isDark.value ? 0x404040 : 0x808080)
-const modelColor = computed(() => isDark.value ? 0x404040 : 0x3366ff)
+const modelColor = computed(() => isDark.value ? 0x0167ff : 0x0167ff)
 
 const scene = ref<THREE.Scene>()
 const clock = ref<THREE.Clock>()
@@ -110,9 +111,10 @@ const createArrowModel = () => {
   const bodyGeometry = new THREE.ConeGeometry(0.3, 1.2, 12)
   const bodyMaterial = new THREE.MeshStandardMaterial({
     color: modelColor.value,
-    metalness: 0.6,
-    roughness: 0.3,
-    envMapIntensity: 1.2
+    metalness: 0.8,
+    roughness: 0.2,
+    emissive: modelColor.value,
+    emissiveIntensity: 0.2,
   })
   const body = new THREE.Mesh(bodyGeometry, bodyMaterial)
   body.position.set(0, 0.6, 0)
@@ -121,9 +123,10 @@ const createArrowModel = () => {
   const tailGeometry = new THREE.CylinderGeometry(0.15, 0.25, 0.8, 12)
   const tailMaterial = new THREE.MeshStandardMaterial({
     color: modelColor.value,
-    metalness: 0.6,
-    roughness: 0.3,
-    envMapIntensity: 1.2
+    metalness: 0.8,
+    roughness: 0.2,
+    emissive: modelColor.value,
+    emissiveIntensity: 0.2,
   })
   const tail = new THREE.Mesh(tailGeometry, tailMaterial)
   tail.position.set(0, -0.4, 0)
@@ -133,6 +136,59 @@ const createArrowModel = () => {
 }
 
 const createRocketModel = () => {
+  return new Promise<THREE.Group>((resolve) => {
+    const group = new THREE.Group()
+    
+    const mtlLoader = new MTLLoader()
+    mtlLoader.load('./models/starshipv2.mtl', (mtl) => {
+      mtl.preload()
+      const objLoader = new OBJLoader()
+      objLoader.setMaterials(mtl)
+      
+      objLoader.load('./models/starshipv2.obj', (root) => {
+        root.scale.set(0.02, 0.02, 0.02)
+        root.position.set(0.3, 1.3, 0.3)
+        
+        root.traverse((child: any) => {
+          if (child.isMesh) {
+            child.material = new THREE.MeshStandardMaterial({
+              color: 0x888888,
+              metalness: 0.9,
+              roughness: 0.2,
+            })
+          }
+        })
+        
+        group.add(root)
+        
+        const fireRadius = 0.09
+        const fireHeight = 1.5
+        const particleCount = 800
+        const height = window.innerHeight
+        
+        const geometry0 = new particleFire.Geometry(fireRadius, fireHeight, particleCount)
+        const material0 = new particleFire.Material({ color: 0x00aaff })
+        material0.setPerspective(camera.value!.fov, height)
+        rocketFireMesh = new THREE.Points(geometry0, material0)
+        rocketFireMesh.rotation.x = Math.PI
+        rocketFireMesh.position.set(-0.1, 0.0, 0.3)
+        
+        group.add(rocketFireMesh)
+        group.position.set(0.15, -1, -0.3)
+        
+        resolve(group)
+      }, undefined, (error) => {
+        console.error('加载火箭模型失败:', error)
+        resolve(createSimpleRocketModel())
+      })
+    }, undefined, (error) => {
+      console.error('加载材质失败:', error)
+      resolve(createSimpleRocketModel())
+    })
+  })
+}
+
+const createSimpleRocketModel = () => {
   const group = new THREE.Group()
 
   const bodyGeometry = new THREE.ConeGeometry(0.2, 0.5, 12)
@@ -163,7 +219,7 @@ const createRocketModel = () => {
   const height = window.innerHeight;
 
   const geometry0 = new particleFire.Geometry( fireRadius, fireHeight, particleCount );
-  const material0 = new particleFire.Material( { color: 0xff2200 } );
+  const material0 = new particleFire.Material( { color: 0x00aaff } );
   material0.setPerspective( camera.value!.fov, height );
   rocketFireMesh = new THREE.Points( geometry0, material0 );
   rocketFireMesh.rotation.x = 3.14
@@ -180,9 +236,10 @@ const createCubeModel = () => {
   const geometry = new THREE.BoxGeometry(1, 1, 1)
   const material = new THREE.MeshStandardMaterial({
     color: modelColor.value,
-    metalness: 0.7,
-    roughness: 0.3,
-    envMapIntensity: 1
+    metalness: 0.8,
+    roughness: 0.2,
+    emissive: modelColor.value,
+    emissiveIntensity: 0.2,
   })
   const cube = new THREE.Mesh(geometry, material)
   cube.position.set(0, 0.5, 0)
@@ -191,7 +248,7 @@ const createCubeModel = () => {
   return group
 }
 
-const createModel = (type: string) => {
+const createModel = async (type: string) => {
   if (model.value && scene.value) {
     scene.value.remove(model.value)
   }
@@ -200,7 +257,7 @@ const createModel = (type: string) => {
 
   switch (type) {
     case 'rocket':
-      newModel = createRocketModel()
+      newModel = await createRocketModel()
       break
     case 'arrow':
       newModel = createArrowModel()

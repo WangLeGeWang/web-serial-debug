@@ -1,8 +1,13 @@
 <script setup lang="ts">
 import { useQuickSendStore } from '../store/quickSendStore'
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 
 const quickSendStore = useQuickSendStore()
+
+onMounted(() => {
+  quickSendStore.loadFromProfile()
+})
+
 const importInput = ref<HTMLInputElement | null>(null)
 
 const handleImportFile = (event: Event) => {

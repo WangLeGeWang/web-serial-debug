@@ -1,4 +1,3 @@
-import { ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { authorizedDevices, type Device } from '../types'
 import { ConfigManager } from '../../utils/ConfigManager'
@@ -34,8 +33,6 @@ export class SerialPortDevice implements IDevice {
     { name: 'STM32 Virtual COM Port', vendorId: '0483', productId: '5740' },
     { name: 'STM32 USB CDC', vendorId: '0483', productId: '5740' }
   ]
-
-  private serialPort = ref<SerialPort | null>(null)
 
   constructor(port: SerialPort) {
     this.port = port
@@ -101,7 +98,6 @@ export class SerialPortDevice implements IDevice {
   } | null> {
     try {
       await this.port.open(config)
-      this.serialPort.value = this.port
       const writer = this.port.writable.getWriter()
       const reader = this.port.readable.getReader()
       return { writer, reader }
@@ -114,9 +110,8 @@ export class SerialPortDevice implements IDevice {
 
   async disconnect(): Promise<void> {
     try {
-      if (this.serialPort.value) {
-        await this.serialPort.value.close()
-        this.serialPort.value = null
+      if (this.port) {
+        await this.port.close()
       }
     } catch (error) {
       ElMessage.error('断开设备失败：' + error)
