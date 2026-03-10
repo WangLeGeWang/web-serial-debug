@@ -620,76 +620,69 @@ const getConnectedDeviceName = computed(() => {
       v-model="showSettings"
       title="工作区设置"
       width="600px"
+      top="50px"
     >
-      <el-tabs type="card">
-        <el-tab-pane label="工作区">
-          <el-form label-width="100px">
-            <el-form-item label="名称">
-              <el-input v-model="workspaceName" placeholder="工作区名称" />
-            </el-form-item>
-            <el-form-item label="设备">
-              <el-select v-model="workspaceDeviceId" placeholder="选择设备" clearable style="width: 100%;">
-                <el-option
-                  v-for="device in authorizedDevices"
-                  :key="device.id"
-                  :label="device.title"
-                  :value="device.id"
-                />
-              </el-select>
-            </el-form-item>
-            <el-form-item label="自动重连">
-              <el-switch v-model="autoReconnect" />
-            </el-form-item>
-          </el-form>
-        </el-tab-pane>
+      <el-form label-width="100px">
+        <el-divider>基本设置</el-divider>
         
-        <el-tab-pane label="设备配置">
-          <el-form :model="serialConfig" label-width="100px">
-            <el-divider>串口参数</el-divider>
-            
-            <el-form-item label="波特率">
-              <el-select v-model="serialConfig.baudRate" style="width: 100%;">
-                <el-option v-for="rate in baudRates" :key="rate" :label="rate.toString()" :value="rate" />
-              </el-select>
-            </el-form-item>
-            
-            <el-form-item label="数据位">
-              <el-select v-model="serialConfig.dataBits" style="width: 100%;">
-                <el-option v-for="bits in [8, 7, 6, 5]" :key="bits" :label="bits.toString()" :value="bits" />
-              </el-select>
-            </el-form-item>
-            
-            <el-form-item label="停止位">
-              <el-select v-model="serialConfig.stopBits" style="width: 100%;">
-                <el-option v-for="bits in [1, 2]" :key="bits" :label="bits.toString()" :value="bits" />
-              </el-select>
-            </el-form-item>
-            
-            <el-form-item label="校验位">
-              <el-select v-model="serialConfig.parity" style="width: 100%;">
-                <el-option label="无" value="none" />
-                <el-option label="奇校验" value="odd" />
-                <el-option label="偶校验" value="even" />
-              </el-select>
-            </el-form-item>
-            
-            <el-form-item label="流控制">
-              <el-select v-model="serialConfig.flowControl" style="width: 100%;">
-                <el-option label="无" value="none" />
-                <el-option label="硬件流控" value="hardware" />
-              </el-select>
-            </el-form-item>
-          </el-form>
-        </el-tab-pane>
+        <el-form-item label="名称">
+          <el-input v-model="workspaceName" placeholder="工作区名称" />
+        </el-form-item>
+        <el-form-item label="设备">
+          <el-select v-model="workspaceDeviceId" placeholder="选择设备" clearable style="width: 100%;">
+            <el-option
+              v-for="device in authorizedDevices"
+              :key="device.id"
+              :label="device.title"
+              :value="device.id"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="自动重连">
+          <el-switch v-model="autoReconnect" />
+        </el-form-item>
         
-        <el-tab-pane label="WebSocket">
-          <el-form :model="wsConfig" label-width="100px">
-            <el-form-item label="WebSocket URL">
-              <el-input v-model="wsConfig.url" placeholder="ws://localhost:8080" />
-            </el-form-item>
-          </el-form>
-        </el-tab-pane>
-      </el-tabs>
+        <el-divider>串口参数</el-divider>
+        
+        <el-form-item label="波特率">
+          <el-select v-model="serialConfig.baudRate" style="width: 100%;">
+            <el-option v-for="rate in baudRates" :key="rate" :label="rate.toString()" :value="rate" />
+          </el-select>
+        </el-form-item>
+        
+        <el-form-item label="数据位">
+          <el-select v-model="serialConfig.dataBits" style="width: 100%;">
+            <el-option v-for="bits in [8, 7, 6, 5]" :key="bits" :label="bits.toString()" :value="bits" />
+          </el-select>
+        </el-form-item>
+        
+        <el-form-item label="停止位">
+          <el-select v-model="serialConfig.stopBits" style="width: 100%;">
+            <el-option v-for="bits in [1, 2]" :key="bits" :label="bits.toString()" :value="bits" />
+          </el-select>
+        </el-form-item>
+        
+        <el-form-item label="校验位">
+          <el-select v-model="serialConfig.parity" style="width: 100%;">
+            <el-option label="无" value="none" />
+            <el-option label="奇校验" value="odd" />
+            <el-option label="偶校验" value="even" />
+          </el-select>
+        </el-form-item>
+        
+        <el-form-item label="流控制">
+          <el-select v-model="serialConfig.flowControl" style="width: 100%;">
+            <el-option label="无" value="none" />
+            <el-option label="硬件流控" value="hardware" />
+          </el-select>
+        </el-form-item>
+        
+        <el-divider>WebSocket</el-divider>
+        
+        <el-form-item label="WebSocket">
+          <el-input v-model="wsConfig.url" placeholder="ws://localhost:8080" />
+        </el-form-item>
+      </el-form>
       
       <template #footer>
         <el-button @click="showSettings = false">取消</el-button>
