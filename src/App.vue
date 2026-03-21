@@ -10,6 +10,7 @@ import DataTable from './components/DataTable.vue'
 import SerialQuickSend from './components/SerialQuickSend.vue'
 import SerialScripts from './components/SerialScript.vue'
 import CanvasPanel from './components/canvasPanel/CanvasPanel.vue'
+import MarkdownPanel from './components/MarkdownPanel.vue'
 import WorkspaceSelector from './components/WorkspaceSelector.vue'
 import { useDark, useToggle } from '@vueuse/core'
 import { useWorkspaceConfig } from './utils/useWorkspaceConfig'
@@ -133,6 +134,9 @@ handleResize()
             </el-tab-pane>
             <el-tab-pane label="画板" lazy>
               <CanvasPanel />
+            </el-tab-pane>
+            <el-tab-pane label="帮助" lazy>
+              <MarkdownPanel />
             </el-tab-pane>
           </el-tabs>
         </Pane>

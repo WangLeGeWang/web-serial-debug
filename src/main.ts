@@ -5,6 +5,7 @@ import 'element-plus/theme-chalk/dark/css-vars.css'
 import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 import { createPinia } from 'pinia'
 import './style.css'
+import 'markstream-vue/index.css'
 import App from './App.vue'
 
 const app = createApp(App)
