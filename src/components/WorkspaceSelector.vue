@@ -53,6 +53,7 @@ watch(showWorkspacePopover, (visible) => {
 const workspaceName = ref('')
 const workspaceDeviceId = ref<string | null>(null)
 const autoReconnect = ref(false)
+const autoAddField = ref(true)
 const selectedDeviceType = ref('serialport')
 
 const serialConfig = ref({
@@ -72,6 +73,7 @@ const loadWorkspaceSettings = (workspace: Workspace) => {
   workspaceName.value = workspace.name
   workspaceDeviceId.value = workspace.deviceId
   autoReconnect.value = workspace.config.autoReconnect ?? false
+  autoAddField.value = workspace.config.autoAddField ?? true
   if (workspace.config.serial) {
     serialConfig.value = { ...serialConfig.value, ...workspace.config.serial }
   }
@@ -100,7 +102,8 @@ const saveWorkspaceSettings = () => {
         ...workspace.config,
         serial: { ...serialConfig.value },
         websocket: { ...wsConfig.value },
-        autoReconnect: autoReconnect.value
+        autoReconnect: autoReconnect.value,
+        autoAddField: autoAddField.value
       }
     })
     ElMessage.success('设置已保存')
@@ -640,6 +643,9 @@ const getConnectedDeviceName = computed(() => {
         </el-form-item>
         <el-form-item label="自动重连">
           <el-switch v-model="autoReconnect" />
+        </el-form-item>
+        <el-form-item label="自动添加字段">
+          <el-switch v-model="autoAddField" />
         </el-form-item>
         
         <el-divider>串口参数</el-divider>

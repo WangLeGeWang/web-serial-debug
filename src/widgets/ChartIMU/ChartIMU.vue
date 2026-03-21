@@ -44,7 +44,7 @@ const modelOptions = [
 const isDark = useDark()
 const sceneBackground = computed(() => isDark.value ? 0x1a1a1a : 0xf0f0f0)
 const gridColor = computed(() => isDark.value ? 0x404040 : 0x808080)
-const modelColor = computed(() => isDark.value ? 0x0167ff : 0x0167ff)
+const modelColor = computed(() => isDark.value ? 0x03370ff : 0x03370ff)
 
 const scene = ref<THREE.Scene>()
 const clock = ref<THREE.Clock>()

@@ -1,4 +1,4 @@
-# Web BUS Tool 使用指南
+# BUS Tool 使用指南
 
 ## 数据流转流程
 
@@ -10,8 +10,9 @@ graph LR
     A[📡 设备<br/>串口/USB/蓝牙] -->|原始数据| B[⚙️ DataReceiver]
     B -->|解析| C[(📊 数据表<br/>updateDataTable)]
     
-    C -->|实时渲染| D[📺 数据表面板]
     B -->|数据输出| E[💻 控制台面板]
+    C -->|实时渲染| D[📺 数据表面板]
+    D -->|实时渲染| G[📺 可视化面板]
 
     F[📤 DataSender] -->|指令回传| A
     F <-.-> I[📝 用户输入]

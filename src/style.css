@@ -1,4 +1,11 @@
 :root {
+  --el-color-primary: #3370ff;
+  --el-color-primary-light-3: #6ba3ff;
+  --el-color-primary-light-5: #99bfff;
+  --el-color-primary-light-7: #c7daff;
+  --el-color-primary-light-8: #dae6ff;
+  --el-color-primary-light-9: #ecf2ff;
+  --el-color-primary-dark-2: #295acc;
   font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
@@ -20,6 +27,10 @@ a {
 }
 a:hover {
   color: #535bf2;
+}
+
+html {
+  overflow: hidden;
 }
 
 body {

@@ -30,7 +30,8 @@ const defaultConfig = {
   columnVisibility: {},
   quickSendGroups: [],
   script: null,
-  savedDevice: {deviceType: "mock", deviceId: "mock_imu", deviceTitle: "模拟IMU设备"}
+  savedDevice: {deviceType: "mock", deviceId: "mock_imu", deviceTitle: "模拟IMU设备"},
+  autoAddField: true
 }
 
 export const isConnected = ref(false)

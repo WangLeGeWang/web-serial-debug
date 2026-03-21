@@ -17,29 +17,29 @@ export interface Runtimer {
   DataSenderInterface: Function | null
 }
 
-const demoCode = `let cache = '';
+const demoCode = `let receiveBuffer = '';
 
 // 处理接收的数据
 async function DataReceiver(data) {
-  cache += uint8ArrayToString(data);
+  receiveBuffer += uint8ArrayToString(data);
   // 数据格式："pitch:-0.13,roll:0.00,yaw:0.07\\n"
 
-  if (cache.indexOf('\\n') !== -1) {
-    const lines = cache.split('\\n');
-    cache = lines.pop() || '';
+  if (receiveBuffer.indexOf('\\n') !== -1) {
+    const lines = receiveBuffer.split('\\n');
+    receiveBuffer = lines.pop() || '';
     
     for (const line of lines) {
-      let files = line.split(',')
-      let data = {};
-      files.map((str) => {
+      let fields = line.split(',')
+      let parsedData = {};
+      fields.map((str) => {
         let s2 = str.split(':')
         if (s2.length === 2) {
-          data[s2[0]] = parseFloat(s2[1])
+          parsedData[s2[0]] = parseFloat(s2[1])
         }
       })
       
       // 更新到数据表
-      updateDataTable(data);
+      updateDataTable(parsedData);
     }
   }
   return data;
@@ -151,9 +151,15 @@ export class ScriptManager {
 return (async function() {
   ${this.script.code}
 
-  let DataReceiverInterface = typeof DataReceiver == 'undefined' ? null : DataReceiver;
-  let DataSenderInterface = typeof DataSender == 'undefined'? null : DataSender;
-  return { DataReceiverInterface, DataSenderInterface };
+  let onDataReceiverInterface = typeof onDataReceived == 'undefined' ? null : onDataReceived;
+  let onDataSenderInterface = typeof onDataToSend == 'undefined'? null : onDataToSend;
+  if (!onDataReceiverInterface) {
+      onDataReceiverInterface = typeof DataReceiver == 'undefined' ? null : DataReceiver;
+  }
+  if (!onDataSenderInterface) {
+      onDataSenderInterface = typeof DataSender == 'undefined' ? null : DataSender;
+  }
+  return { DataReceiverInterface: onDataReceiverInterface, DataSenderInterface: onDataSenderInterface };
 })()
       `
 
