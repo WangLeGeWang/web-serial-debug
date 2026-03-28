@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, computed, nextTick } from 'vue'
-import TimeRangeControl from './TimeRangeControl.vue'
+import PlaybackControl from './PlaybackControl.vue'
+import DataSeriesManager from './DataSeriesManager.vue'
 import DashboardManager from './DashboardManager.vue'
 import CanvasWidgetWrapper from './CanvasWidgetWrapper.vue'
 import CanvasItemConfigDialog from './CanvasItemConfigDialog.vue'
@@ -11,6 +12,8 @@ import { useDashboardStore } from '@/store/dashboardStore'
 import { EventCenter, EventNames } from '@/utils/EventCenter'
 import { ProfileManagerInst } from '@/utils/ProfileManager'
 import type { CanvasConfig } from '../types'
+
+const showManager = ref(false)
 
 const profileManager = ProfileManagerInst
 
@@ -337,7 +340,7 @@ const saveItemConfig = (updatedItem: any) => {
           </div>
         </grid-item>
       </grid-layout>
-      <TimeRangeControl class="time-range-control" />
+      <PlaybackControl @open-manager="showManager = true" />
     </div>
 
     <CanvasItemConfigDialog
@@ -345,6 +348,8 @@ const saveItemConfig = (updatedItem: any) => {
       :item="configItem"
       @save="saveItemConfig"
     />
+
+    <DataSeriesManager @close="showManager = false" />
   </div>
 </template>
 
