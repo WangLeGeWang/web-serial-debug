@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, watch, onMounted, onUnmounted, ref } from 'vue'
 import LineChart from './LineChart.vue'
-import { useDataStore } from '@/store/dataStore'
+import { realtimeProvider } from '@/utils/RealtimeProvider'
 
 interface Props {
   fields?: string[]
@@ -11,17 +11,15 @@ const props = withDefaults(defineProps<Props>(), {
   fields: () => []
 })
 
-const dataStore = useDataStore()
-
 const chartFields = computed(() => {
-  const points = dataStore.dataPoints
+  const points = realtimeProvider.dataPoints.value
   if (points.length === 0) return []
   if (props.fields.length > 0) return props.fields
   return Object.keys(points[0]?.values || {})
 })
 
 const chartData = computed((): number[][] => {
-  const points = dataStore.dataPoints
+  const points = realtimeProvider.dataPoints.value
   if (points.length === 0) {
     return [[0], [0]]
   }
@@ -42,7 +40,7 @@ watch(() => props.fields, () => {
   key.value++
 })
 
-watch(() => dataStore.dataPoints.length, () => {
+watch(() => realtimeProvider.dataPoints.value.length, () => {
   key.value++
 })
 </script>

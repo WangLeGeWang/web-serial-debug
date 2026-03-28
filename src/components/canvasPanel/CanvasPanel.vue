@@ -6,7 +6,7 @@ import CanvasWidgetWrapper from './CanvasWidgetWrapper.vue'
 import CanvasItemConfigDialog from './CanvasItemConfigDialog.vue'
 import { useDark } from '@vueuse/core'
 import { GridLayout, GridItem } from 'grid-layout-plus'
-import { useDataStore } from '@/store/dataStore'
+import { realtimeProvider } from '@/utils/RealtimeProvider'
 import { useDashboardStore } from '@/store/dashboardStore'
 import { EventCenter, EventNames } from '@/utils/EventCenter'
 import { ProfileManagerInst } from '@/utils/ProfileManager'
@@ -35,7 +35,6 @@ const localCanvasConfig = computed({
     }
   }
 })
-const dataStore = useDataStore()
 const dashboardStore = useDashboardStore()
 const eventCenter = EventCenter.getInstance()
 
@@ -48,7 +47,7 @@ eventCenter.on(EventNames.DATA_UPDATE, (data: any) => {
       values[key] = value
     }
   })
-  dataStore.addDataPoint(timestamp, values)
+  realtimeProvider.addDataPoint(timestamp, values)
 })
 
 interface CanvasItem {

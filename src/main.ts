@@ -7,9 +7,12 @@ import { createPinia } from 'pinia'
 import './style.css'
 import 'markstream-vue/index.css'
 import App from './App.vue'
+import { setDataSourceProvider, createRealtimeProvider } from './utils/RealtimeProvider'
 
 const app = createApp(App)
 const pinia = createPinia()
+
+setDataSourceProvider(createRealtimeProvider())
 
 for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
   app.component(key, component)

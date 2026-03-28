@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { useDataStore } from '@/store/dataStore'
+import { realtimeProvider } from '@/utils/RealtimeProvider'
 
 interface Props {
   visible: boolean
@@ -20,13 +20,11 @@ interface Emit {
 const props = defineProps<Props>()
 const emit = defineEmits<Emit>()
 
-const dataStore = useDataStore()
-
 const localItem = ref<any>(null)
 
 const availableFields = computed(() => {
   const fieldSet = new Set<string>()
-  dataStore.dataPoints.forEach(point => {
+  realtimeProvider.dataPoints.value.forEach(point => {
     Object.keys(point.values).forEach(key => fieldSet.add(key))
   })
   return Array.from(fieldSet).map(key => ({ label: key, value: key }))

@@ -1,5 +1,8 @@
 import { ref, computed } from 'vue'
+import { setDataSourceProvider } from './DataSourceProvider'
 import type { DataPoint, DataSourceProvider } from './DataSourceProvider'
+
+export { setDataSourceProvider }
 
 const MAX_POINTS = 50000
 const WINDOW_DURATION = 30000

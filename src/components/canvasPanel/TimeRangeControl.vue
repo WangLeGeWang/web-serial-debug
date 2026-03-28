@@ -3,10 +3,14 @@ import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import uPlot from 'uplot'
 import 'uplot/dist/uPlot.min.css'
 import { useDark } from '@vueuse/core'
-import { useDataStore } from '@/store/dataStore'
+import { realtimeProvider } from '@/utils/RealtimeProvider'
 
-const dataStore = useDataStore()
 const isDark = useDark()
+
+const isRealtime = computed({
+  get: () => realtimeProvider.isRealtime.value,
+  set: (val) => realtimeProvider.toggleRealtime(val)
+})
 
 const container = ref<HTMLElement | null>(null)
 let plot: uPlot | null = null
@@ -42,7 +46,7 @@ function debounce(fn) {
 }
 
 function placeDiv(par, cls) {
-  let el = doc.createElement("div");
+  let el = document.createElement("div");
   el.classList.add(cls);
   par.appendChild(el);
   return el;
@@ -97,14 +101,14 @@ function bindMove(e, onMove) {
   wid0 = uRanger.select.width;
 
   const _onMove = debounce(onMove);
-  on("mousemove", doc, _onMove);
+  on("mousemove", document, _onMove);
 
   const _onUp = e => {
-    off("mouseup", doc, _onUp);
-    off("mousemove", doc, _onMove);
+    off("mouseup", document, _onUp);
+  off("mousemove", document, _onMove);
     viaGrip = false;
   };
-  on("mouseup", doc, _onUp);
+  on("mouseup", document, _onUp);
 
   e.stopPropagation();
 }
@@ -227,7 +231,7 @@ const initPlot = () => {
 const updatePlot = () => {
   if (!plot) return
 
-  const data = dataStore.dataPoints
+  const data = realtimeProvider.dataPoints
   if (data.length === 0) {
     plot.setData([[0], [0]])
     return
@@ -243,7 +247,7 @@ const updatePlot = () => {
 }
 
 // 监听数据变化
-watch(() => dataStore.dataPoints, updatePlot, { deep: true })
+watch(() => realtimeProvider.dataPoints, updatePlot, { deep: true })
 
 // 监听主题变化
 watch(currentTheme, () => {
@@ -261,10 +265,9 @@ onMounted(() => {
   <div class="time-range-control">
     <div class="control-header">
       <el-switch
-        v-model="dataStore.isRealtime"
+        v-model="isRealtime"
         active-text="实时"
         inactive-text="历史"
-        @change="dataStore.toggleRealtime"
       />
     </div>
     <div ref="container" class="plot-container"></div>
