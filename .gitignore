@@ -25,3 +25,7 @@ dist-ssr
 
 web-serial-debug
 window/window
+
+# Worktrees
+.worktrees
+worktrees
