@@ -40,9 +40,53 @@ interface USBDevice {
   manufacturerName?: string
 }
 
+interface BluetoothRemoteGATTCharacteristic {
+  uuid: string
+  properties: {
+    broadcast: boolean
+    read: boolean
+    writeWithoutResponse: boolean
+    write: boolean
+    notify: boolean
+    indicate: boolean
+    authenticatedSignedWrites: boolean
+    reliableWrite: boolean
+    writableAuxiliaries: boolean
+  }
+  value?: DataView
+  addEventListener(type: 'characteristicvaluechanged', listener: (event: Event) => void): void
+  removeEventListener(type: 'characteristicvaluechanged', listener: (event: Event) => void): void
+  startNotifications(): Promise<void>
+  stopNotifications(): Promise<void>
+  writeValue(value: BufferSource): Promise<void>
+  readValue(): Promise<DataView>
+}
+
+interface BluetoothRemoteGATTService {
+  uuid: string
+  device: BluetoothDevice
+  getCharacteristic(characteristic: string | number): Promise<BluetoothRemoteGATTCharacteristic>
+  getCharacteristics(characteristic?: string | number): Promise<BluetoothRemoteGATTCharacteristic[]>
+  getPrimaryService(service: string | number): Promise<BluetoothRemoteGATTService>
+  getPrimaryServices(service?: string | number): Promise<BluetoothRemoteGATTService[]>
+}
+
+interface BluetoothRemoteGATTServer {
+  device: BluetoothDevice
+  connected: boolean
+  connect(): Promise<BluetoothRemoteGATTServer>
+  disconnect(): Promise<void>
+  getPrimaryService(service: string | number): Promise<BluetoothRemoteGATTService>
+  getPrimaryServices(service?: string | number): Promise<BluetoothRemoteGATTService[]>
+}
+
 interface BluetoothDevice {
   id: string
   name?: string
+  gatt?: BluetoothRemoteGATTServer
+  watchingAdvertisements: boolean
+  addEventListener(type: 'advertisementreceived', listener: (event: Event) => void): void
+  removeEventListener(type: 'advertisementreceived', listener: (event: Event) => void): void
 }
 
 interface LogOptions {
