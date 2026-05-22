@@ -31,6 +31,7 @@ interface Navigator {
   }
   bluetooth: {
     requestDevice(options: any): Promise<BluetoothDevice>
+    getDevices(): Promise<BluetoothDevice[]>
   }
 }
 

@@ -42,6 +42,9 @@ export class BluetoothDeviceImpl implements IDevice {
       console.log('[Bluetooth] Requesting device with UART service...')
       const port = await navigator.bluetooth.requestDevice({
         acceptAllDevices: true,
+        // filters: [ 
+        //   { namePrefix: '' } 
+        // ],
         optionalServices: [BluetoothDeviceImpl.STANDARD_UART_SERVICE]
       })
       console.log('[Bluetooth] Device selected:', port.name, port.id)
