@@ -1,120 +1,160 @@
 <template>
-  <el-dialog v-model="dialogVisible" :title="dialogTitle" width="500px" @open="onDialogOpen">
-    <el-form :model="form" label-width="100px">
-      <!-- 添加模式：选择组件类型 -->
-      <el-form-item label="组件类型" v-if="!isEdit">
-        <el-select v-model="form.type" placeholder="请选择组件类型" style="width: 100%" @change="onTypeChange">
-          <el-option-group v-for="group in nodeTypeOptions" :key="group.label" :label="group.label">
-            <el-option
-              v-for="item in group.options"
-              :key="item.value"
-              :label="item.label"
-              :value="item.value"
-            >
-              <span>{{ item.label }}</span>
-              <span style="float: right; color: #8492a6; font-size: 12px">{{ item.desc }}</span>
-            </el-option>
-          </el-option-group>
-        </el-select>
-      </el-form-item>
-
-      <!-- 所有类型：基本信息 -->
+  <el-dialog v-model="dialogVisible" :title="dialogTitle" width="760px" @open="onDialogOpen">
+    <el-form :model="form" label-width="90px">
+      <el-divider>基础信息</el-divider>
       <el-form-item label="组件名称">
         <el-input v-model="form.label" placeholder="请输入组件名称" />
       </el-form-item>
-
-      <!-- 传感器类型：数据绑定 -->
-      <template v-if="isSensor">
-        <el-divider>数据绑定</el-divider>
-        <el-form-item label="数据 Key">
-          <el-input v-model="form.dataKey" placeholder="对应的数据 key，如 pressure_main" />
-        </el-form-item>
-        <el-form-item label="显示单位">
-          <el-input v-model="form.unit" placeholder="如 MPa, ℃, kg/s" />
-        </el-form-item>
-        <el-form-item label="告警阈值">
-          <div class="threshold-row">
-            <el-input-number v-model="form.thresholdWarning" :min="0" :precision="2" placeholder="警告" style="flex: 1" />
-            <span style="padding: 0 8px">~</span>
-            <el-input-number v-model="form.thresholdCritical" :min="0" :precision="2" placeholder="危险" style="flex: 1" />
-          </div>
-        </el-form-item>
-      </template>
-
-      <!-- 阀门类型：控制配置 -->
-      <template v-if="isValve">
-        <el-divider>数据绑定</el-divider>
-        <el-form-item label="状态 Key">
-          <el-input v-model="form.dataKey" placeholder="对应的数据 key" />
-        </el-form-item>
-        <el-form-item label="开度 Key">
-          <el-input v-model="form.positionKey" placeholder="开度数据 key (0-100)" />
-        </el-form-item>
-      </template>
-
-      <!-- 储罐类型：存储配置 -->
-      <template v-if="isTank">
-        <el-divider>数据绑定</el-divider>
-        <el-form-item label="压力 Key">
-          <el-input v-model="form.pressureKey" placeholder="压力数据 key" />
-        </el-form-item>
-        <el-form-item label="温度 Key">
-          <el-input v-model="form.temperatureKey" placeholder="温度数据 key" />
-        </el-form-item>
-        <el-form-item label="液位 Key">
-          <el-input v-model="form.levelKey" placeholder="液位数据 key (0-100)" />
-        </el-form-item>
-        <el-form-item label="液位告警">
-          <el-input-number v-model="form.levelWarning" :min="0" :max="100" placeholder="低液位警告 %" style="width: 100%" />
-        </el-form-item>
-      </template>
-
-      <!-- 发动机类型 -->
-      <template v-if="isEngine">
-        <el-divider>数据绑定</el-divider>
-        <el-form-item label="推力 Key">
-          <el-input v-model="form.thrustKey" placeholder="推力数据 key" />
-        </el-form-item>
-        <el-form-item label="室压 Key">
-          <el-input v-model="form.chamberPressureKey" placeholder="燃烧室压力 key" />
-        </el-form-item>
-        <el-form-item label="混合比 Key">
-          <el-input v-model="form.mixtureRatioKey" placeholder="混合比数据 key" />
-        </el-form-item>
-      </template>
-
-      <!-- 调压阀类型 -->
-      <template v-if="form.type === 'regulator'">
-        <el-divider>数据绑定</el-divider>
-        <el-form-item label="出口压力 Key">
-          <el-input v-model="form.dataKey" placeholder="出口压力数据 key" />
-        </el-form-item>
-        <el-form-item label="设定值 Key">
-          <el-input v-model="form.setpointKey" placeholder="设定值数据 key" />
-        </el-form-item>
-      </template>
-
-      <!-- 连接点配置 -->
-      <el-divider>连接点配置</el-divider>
-      <el-form-item label="连接桩">
-        <div class="handles-config">
-          <div v-for="(handle, index) in form.handles" :key="index" class="handle-row">
-            <el-input v-model="handle.id" placeholder="ID" style="width: 80px" />
-            <el-select v-model="handle.type" placeholder="类型" style="width: 80px">
-              <el-option label="输入←" value="target" />
-              <el-option label="输出→" value="source" />
-            </el-select>
-            <el-select v-model="handle.position" placeholder="位置" style="width: 80px">
-              <el-option label="↑上" value="top" />
-              <el-option label="↓下" value="bottom" />
-              <el-option label="←左" value="left" />
-              <el-option label="→右" value="right" />
-            </el-select>
-            <el-button type="danger" link @click="removeHandle(index)" :icon="Delete" />
-          </div>
-          <el-button type="primary" link @click="addHandle" :icon="Plus">添加连接桩</el-button>
-        </div>
+      <el-form-item label="组件类型">
+        <el-select v-model="form.type" style="width: 100%" :disabled="isEdit" @change="onTypeChange">
+          <el-option v-for="item in nodeTypeOptions" :key="item.value" :label="item.label" :value="item.value" />
+        </el-select>
       </el-form-item>
+      <el-form-item label="具体类型">
+        <el-select v-model="form.subtype" style="width: 100%" @change="onSubtypeChange">
+          <el-option v-for="item in currentSubtypeOptions" :key="item.value" :label="item.label" :value="item.value" />
+        </el-select>
+      </el-form-item>
+
+      <el-divider>显示字段</el-divider>
+      <div class="section-toolbar">
+        <el-button size="small" type="primary" @click="addField('realtime')">实时数据</el-button>
+        <el-button size="small" @click="addField('static')">固定文字</el-button>
+        <el-button size="small" @click="addField('mapping')">状态映射</el-button>
+        <el-button size="small" @click="addField('expression')">计算表达式</el-button>
+      </div>
+      <el-collapse v-model="activeFieldNames" class="config-collapse">
+        <el-collapse-item v-for="(field, index) in form.displayFields" :key="field.id" :name="field.id">
+          <template #title>
+            <span class="collapse-title">{{ field.label || '字段' }} · {{ fieldTypeLabel(field.type) }}</span>
+          </template>
+          <div class="field-card">
+            <el-row :gutter="12">
+              <el-col :span="8">
+                <el-form-item label="字段类型" label-width="80px">
+                  <el-select v-model="field.type" style="width: 100%" @change="onFieldTypeChange(field)">
+                    <el-option label="实时数据" value="realtime" />
+                    <el-option label="固定文字" value="static" />
+                    <el-option label="状态映射" value="mapping" />
+                    <el-option label="计算表达式" value="expression" />
+                  </el-select>
+                </el-form-item>
+              </el-col>
+              <el-col :span="8">
+                <el-form-item label="显示名" label-width="70px">
+                  <el-input v-model="field.label" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="8">
+                <div class="row-actions">
+                  <el-button size="small" :disabled="index === 0" @click="moveField(index, -1)">上移</el-button>
+                  <el-button size="small" :disabled="index === form.displayFields.length - 1" @click="moveField(index, 1)">下移</el-button>
+                  <el-button size="small" type="danger" @click="removeField(index)">删除</el-button>
+                </div>
+              </el-col>
+            </el-row>
+
+            <el-form-item v-if="field.type === 'realtime' || field.type === 'mapping'" label="数据 Key">
+              <el-input v-model="field.key" placeholder="例如 fuel_pressure" />
+            </el-form-item>
+            <el-form-item v-if="field.type === 'static'" label="固定文字">
+              <el-input v-model="field.text" placeholder="例如 煤油" />
+            </el-form-item>
+            <el-form-item v-if="field.type === 'expression'" label="表达式">
+              <el-input v-model="field.expression" placeholder="例如 lox_flow / fuel_flow" />
+            </el-form-item>
+            <el-form-item v-if="field.type === 'mapping'" label="映射表">
+              <el-input v-model="field.mapText" type="textarea" :rows="3" placeholder="0=关闭\n1=开启\n2=故障" />
+            </el-form-item>
+            <el-row :gutter="12" v-if="field.type !== 'static'">
+              <el-col :span="8">
+                <el-form-item label="单位">
+                  <el-input v-model="field.unit" placeholder="MPa" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="8">
+                <el-form-item label="精度">
+                  <el-input-number v-model="field.precision" :min="0" :max="6" style="width: 100%" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="8">
+                <el-form-item label="模板">
+                  <el-input v-model="field.template" placeholder="{label}: {value} {unit}" />
+                </el-form-item>
+              </el-col>
+            </el-row>
+            <el-form-item v-else label="模板">
+              <el-input v-model="field.template" placeholder="{label}: {text}" />
+            </el-form-item>
+            <el-row :gutter="12" v-if="field.type === 'realtime' || field.type === 'expression'">
+              <el-col :span="8">
+                <el-form-item label="阈值模式">
+                  <el-select v-model="field.thresholdMode" clearable style="width: 100%">
+                    <el-option label="大于" value="greater" />
+                    <el-option label="小于" value="less" />
+                    <el-option label="范围外" value="range" />
+                    <el-option label="等于" value="equal" />
+                  </el-select>
+                </el-form-item>
+              </el-col>
+              <el-col :span="8" v-if="field.thresholdMode === 'greater' || field.thresholdMode === 'less'">
+                <el-form-item label="警告">
+                  <el-input-number v-model="field.warning" style="width: 100%" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="8" v-if="field.thresholdMode === 'greater' || field.thresholdMode === 'less'">
+                <el-form-item label="危险">
+                  <el-input-number v-model="field.critical" style="width: 100%" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="8" v-if="field.thresholdMode === 'range'">
+                <el-form-item label="最小">
+                  <el-input-number v-model="field.min" style="width: 100%" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="8" v-if="field.thresholdMode === 'range'">
+                <el-form-item label="最大">
+                  <el-input-number v-model="field.max" style="width: 100%" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="8" v-if="field.thresholdMode === 'equal'">
+                <el-form-item label="等于">
+                  <el-input v-model="field.equal" />
+                </el-form-item>
+              </el-col>
+            </el-row>
+          </div>
+        </el-collapse-item>
+      </el-collapse>
+
+      <el-divider>连接点配置</el-divider>
+      <div class="handles-config">
+        <div v-for="(handle, index) in form.handles" :key="index" class="handle-row">
+          <el-input v-model="handle.id" placeholder="ID" style="width: 120px" />
+          <el-select v-model="handle.type" placeholder="类型" style="width: 100px">
+            <el-option label="输入" value="target" />
+            <el-option label="输出" value="source" />
+          </el-select>
+          <el-select v-model="handle.position" placeholder="位置" style="width: 100px">
+            <el-option label="上" value="top" />
+            <el-option label="下" value="bottom" />
+            <el-option label="左" value="left" />
+            <el-option label="右" value="right" />
+          </el-select>
+          <el-button type="danger" link @click="removeHandle(index)">删除</el-button>
+        </div>
+        <el-button type="primary" link @click="addHandle">添加连接点</el-button>
+      </div>
+
+      <el-divider>动作按钮</el-divider>
+      <div class="handles-config">
+        <div v-for="(action, index) in form.actions" :key="index" class="handle-row">
+          <el-input v-model="action.label" placeholder="按钮名" style="width: 160px" />
+          <el-input v-model="action.value" placeholder="值" style="width: 160px" />
+          <el-button type="danger" link @click="removeAction(index)">删除</el-button>
+        </div>
+        <el-button type="primary" link @click="addAction">添加动作</el-button>
+      </div>
     </el-form>
     <template #footer>
       <el-button @click="dialogVisible = false">取消</el-button>
@@ -124,13 +164,25 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, watch, computed } from 'vue'
-import { ElDialog, ElForm, ElFormItem, ElInput, ElSelect, ElOption, ElButton, ElInputNumber, ElDivider, ElOptionGroup } from 'element-plus'
-import { Delete, Plus } from '@element-plus/icons-vue'
+import { computed, reactive, ref, watch } from 'vue'
+import { ElButton, ElCollapse, ElCollapseItem, ElCol, ElDialog, ElDivider, ElForm, ElFormItem, ElInput, ElInputNumber, ElOption, ElRow, ElSelect } from 'element-plus'
+import { createDisplayField, getDefaultHandles, getDefaultLabel, getDefaultNodeData, nodeTypeOptions, subtypeOptions } from './defaults'
+import type { DisplayField, DisplayFieldType, PipelineAction, PipelineHandle, PipelineNodeType } from './types'
+
+interface EditableDisplayField extends DisplayField {
+  mapText?: string
+  thresholdMode?: 'greater' | 'less' | 'range' | 'equal' | ''
+  warning?: number
+  critical?: number
+  min?: number
+  max?: number
+  equal?: string | number
+}
 
 const props = defineProps<{
   modelValue: boolean
   editData?: any
+  initialType?: PipelineNodeType
 }>()
 
 const emit = defineEmits<{
@@ -139,257 +191,209 @@ const emit = defineEmits<{
 }>()
 
 const dialogVisible = ref(props.modelValue)
+const activeFieldNames = ref<string[]>([])
 const isEdit = computed(() => !!props.editData?.id)
 const dialogTitle = computed(() => isEdit.value ? `编辑 - ${props.editData?.data?.label || '组件'}` : '添加组件')
-
-const isSensor = computed(() => ['pressure', 'temperature', 'flow'].includes(form.type))
-const isValve = computed(() => ['valve', 'check_valve'].includes(form.type))
-const isTank = computed(() => ['fuel', 'oxidizer', 'pressurant'].includes(form.type))
-const isEngine = computed(() => form.type === 'engine')
-
-interface Handle {
-  id: string
-  type: 'target' | 'source'
-  position: 'top' | 'bottom' | 'left' | 'right'
-}
+const currentSubtypeOptions = computed(() => subtypeOptions[form.type])
 
 const form = reactive({
-  type: '',
+  id: '',
+  type: 'tank' as PipelineNodeType,
   label: '',
-  dataKey: '',
-  unit: '',
-  positionKey: '',
-  pressureKey: '',
-  temperatureKey: '',
-  levelKey: '',
-  levelWarning: undefined as number | undefined,
-  thrustKey: '',
-  chamberPressureKey: '',
-  mixtureRatioKey: '',
-  setpointKey: '',
-  thresholdWarning: undefined as number | undefined,
-  thresholdCritical: undefined as number | undefined,
-  handles: [] as Handle[]
+  subtype: 'fuel',
+  displayFields: [] as EditableDisplayField[],
+  handles: [] as PipelineHandle[],
+  actions: [] as PipelineAction[]
 })
 
+watch(() => props.modelValue, val => {
+  dialogVisible.value = val
+})
+
+watch(() => dialogVisible.value, val => {
+  emit('update:modelValue', val)
+})
+
+function onDialogOpen() {
+  const type = (props.editData?.type || props.initialType || 'tank') as PipelineNodeType
+  const data = props.editData?.data || getDefaultNodeData(type)
+  form.id = props.editData?.id || ''
+  form.type = type
+  form.subtype = data.subtype || subtypeOptions[type][0].value
+  form.label = data.label || getDefaultLabel(type, form.subtype)
+  form.displayFields = normalizeEditableFields(data.displayFields || [])
+  form.handles = JSON.parse(JSON.stringify(data.handles || getDefaultHandles(type, form.subtype)))
+  form.actions = JSON.parse(JSON.stringify(data.actions || []))
+  activeFieldNames.value = form.displayFields.map(field => field.id)
+}
+
+function onTypeChange() {
+  const data = getDefaultNodeData(form.type)
+  form.subtype = data.subtype
+  form.label = data.label
+  form.displayFields = normalizeEditableFields(data.displayFields)
+  form.handles = JSON.parse(JSON.stringify(data.handles))
+  form.actions = JSON.parse(JSON.stringify(data.actions || []))
+  activeFieldNames.value = form.displayFields.map(field => field.id)
+}
+
+function onSubtypeChange() {
+  const data = getDefaultNodeData(form.type, form.subtype)
+  form.label = data.label
+  form.displayFields = normalizeEditableFields(data.displayFields)
+  form.handles = JSON.parse(JSON.stringify(data.handles))
+  form.actions = JSON.parse(JSON.stringify(data.actions || []))
+  activeFieldNames.value = form.displayFields.map(field => field.id)
+}
+
+function normalizeEditableFields(fields: DisplayField[]): EditableDisplayField[] {
+  return fields.map(field => ({
+    ...JSON.parse(JSON.stringify(field)),
+    mapText: field.map ? Object.entries(field.map).map(([key, value]) => `${key}=${value}`).join('\n') : '',
+    thresholdMode: field.threshold?.mode || '',
+    warning: field.threshold?.warning,
+    critical: field.threshold?.critical,
+    min: field.threshold?.min,
+    max: field.threshold?.max,
+    equal: field.threshold?.equal
+  }))
+}
+
+function addField(type: DisplayFieldType) {
+  const field = createDisplayField(type) as EditableDisplayField
+  field.mapText = field.map ? Object.entries(field.map).map(([key, value]) => `${key}=${value}`).join('\n') : ''
+  field.thresholdMode = ''
+  form.displayFields.push(field)
+  activeFieldNames.value.push(field.id)
+}
+
+function removeField(index: number) {
+  form.displayFields.splice(index, 1)
+}
+
+function moveField(index: number, offset: number) {
+  const target = index + offset
+  if (target < 0 || target >= form.displayFields.length) return
+  const [field] = form.displayFields.splice(index, 1)
+  form.displayFields.splice(target, 0, field)
+}
+
+function onFieldTypeChange(field: EditableDisplayField) {
+  field.template = field.type === 'static' ? '{label}: {text}' : field.type === 'mapping' ? '{label}: {value}' : '{label}: {value} {unit}'
+  if (field.type === 'mapping' && !field.mapText) field.mapText = '0=关闭\n1=开启'
+}
+
 function addHandle() {
-  const positions: Handle['position'][] = ['top', 'bottom', 'left', 'right']
-  const currentCount = form.handles.length
-  form.handles.push({
-    id: `h${currentCount + 1}`,
-    type: 'target',
-    position: positions[currentCount % 4]
-  })
+  form.handles.push({ id: `h${form.handles.length + 1}`, type: 'target', position: 'left' })
 }
 
 function removeHandle(index: number) {
   form.handles.splice(index, 1)
 }
 
-const nodeTypeOptions = [
-  {
-    label: '储罐',
-    options: [
-      { value: 'fuel', label: '燃料罐', desc: '煤油、酒精等' },
-      { value: 'oxidizer', label: '氧化剂罐', desc: '液氧、四氧化二氮等' },
-      { value: 'pressurant', label: '增压气罐', desc: '氦气、氮气等' }
-    ]
-  },
-  {
-    label: '阀门',
-    options: [
-      { value: 'valve', label: '阀门', desc: '可控制开闭' },
-      { value: 'check_valve', label: '单向阀', desc: '只允许单向流动' },
-      { value: 'regulator', label: '调压阀', desc: '调节出口压力' }
-    ]
-  },
-  {
-    label: '传感器',
-    options: [
-      { value: 'pressure', label: '压力传感器', desc: '监测压力' },
-      { value: 'temperature', label: '温度传感器', desc: '监测温度' },
-      { value: 'flow', label: '流量传感器', desc: '监测流量' }
-    ]
-  },
-  {
-    label: '执行器',
-    options: [
-      { value: 'engine', label: '发动机', desc: '主级发动机' }
-    ]
-  }
-]
-
-function onTypeChange() {
-  form.handles = getDefaultHandles(form.type)
-  const defaults = getDefaultKeys(form.type)
-  Object.assign(form, defaults)
+function addAction() {
+  form.actions.push({ label: '动作', value: '' })
 }
 
-function getDefaultHandles(type: string): Handle[] {
-  const defaults: Record<string, Handle[]> = {
-    fuel: [
-      { id: 'pressurant', type: 'target', position: 'top' },
-      { id: 'output', type: 'source', position: 'bottom' }
-    ],
-    oxidizer: [
-      { id: 'pressurant', type: 'target', position: 'top' },
-      { id: 'output', type: 'source', position: 'bottom' }
-    ],
-    pressurant: [
-      { id: 'output', type: 'source', position: 'bottom' }
-    ],
-    valve: [
-      { id: 'input', type: 'target', position: 'left' },
-      { id: 'output', type: 'source', position: 'right' }
-    ],
-    check_valve: [
-      { id: 'input', type: 'target', position: 'left' },
-      { id: 'output', type: 'source', position: 'right' }
-    ],
-    regulator: [
-      { id: 'input', type: 'target', position: 'left' },
-      { id: 'output', type: 'source', position: 'right' }
-    ],
-    pressure: [
-      { id: 'input', type: 'target', position: 'left' }
-    ],
-    temperature: [
-      { id: 'input', type: 'target', position: 'left' }
-    ],
-    flow: [
-      { id: 'input', type: 'target', position: 'left' },
-      { id: 'output', type: 'source', position: 'right' }
-    ],
-    engine: [
-      { id: 'fuel', type: 'target', position: 'left' },
-      { id: 'oxidizer', type: 'target', position: 'left' },
-      { id: 'output', type: 'source', position: 'right' }
-    ]
-  }
-  return defaults[type] || []
+function removeAction(index: number) {
+  form.actions.splice(index, 1)
 }
 
-function getDefaultKeys(type: string) {
-  const defaults: Record<string, any> = {
-    fuel: { pressureKey: 'fuel_pressure', temperatureKey: 'fuel_temperature', levelKey: 'fuel_level' },
-    oxidizer: { pressureKey: 'lox_pressure', temperatureKey: 'lox_temperature', levelKey: 'lox_level' },
-    pressurant: { pressureKey: 'he_pressure', temperatureKey: 'he_temperature', levelKey: '' },
-    valve: { dataKey: 'valve_state', positionKey: 'valve_position' },
-    check_valve: { dataKey: 'checkvalve_state' },
-    regulator: { dataKey: 'regulator_out_pressure', setpointKey: 'regulator_setpoint' },
-    pressure: { dataKey: 'pressure_', unit: 'MPa', thresholdWarning: 35, thresholdCritical: 40 },
-    temperature: { dataKey: 'temperature_', unit: '℃' },
-    flow: { dataKey: 'flow_', unit: 'kg/s' },
-    engine: { thrustKey: 'engine_thrust', chamberPressureKey: 'engine_chamber_pressure', mixtureRatioKey: 'engine_mixture_ratio' }
+function fieldTypeLabel(type: DisplayFieldType) {
+  const labels: Record<DisplayFieldType, string> = {
+    realtime: '实时数据',
+    static: '固定文字',
+    mapping: '状态映射',
+    expression: '计算表达式'
   }
-  return defaults[type] || {}
+  return labels[type]
 }
 
-function onDialogOpen() {
-  if (props.editData) {
-    const data = props.editData.data || {}
-    const type = props.editData.type || ''
-    form.type = type
-    form.label = data.label || ''
-    form.dataKey = data.dataKey || ''
-    form.unit = data.unit || ''
-    form.positionKey = data.positionKey || ''
-    form.pressureKey = data.pressureKey || ''
-    form.temperatureKey = data.temperatureKey || ''
-    form.levelKey = data.levelKey || ''
-    form.levelWarning = data.threshold?.levelWarning
-    form.thrustKey = data.thrustKey || ''
-    form.chamberPressureKey = data.chamberPressureKey || ''
-    form.mixtureRatioKey = data.mixtureRatioKey || ''
-    form.setpointKey = data.setpointKey || ''
-    form.thresholdWarning = data.threshold?.warning
-    form.thresholdCritical = data.threshold?.critical
-    form.handles = data.handles ? [...data.handles] : getDefaultHandles(type)
-  } else {
-    form.type = ''
-    form.label = ''
-    form.dataKey = ''
-    form.unit = ''
-    form.positionKey = ''
-    form.pressureKey = ''
-    form.temperatureKey = ''
-    form.levelKey = ''
-    form.levelWarning = undefined
-    form.thrustKey = ''
-    form.chamberPressureKey = ''
-    form.mixtureRatioKey = ''
-    form.setpointKey = ''
-    form.thresholdWarning = undefined
-    form.thresholdCritical = undefined
-    form.handles = []
-  }
+function parseMap(text?: string) {
+  const map: Record<string, string> = {}
+  ;(text || '').split('\n').forEach(line => {
+    const index = line.indexOf('=')
+    if (index <= 0) return
+    const key = line.slice(0, index).trim()
+    const value = line.slice(index + 1).trim()
+    if (key) map[key] = value
+  })
+  return map
 }
 
-watch(() => props.modelValue, (val) => {
-  dialogVisible.value = val
-})
-
-watch(() => dialogVisible.value, (val) => {
-  emit('update:modelValue', val)
-})
-
-function handleConfirm() {
-  const config: any = {
-    id: props.editData?.id,
-    type: form.type || props.editData?.type,
-    label: form.label
+function cleanField(field: EditableDisplayField): DisplayField {
+  const result: DisplayField = {
+    id: field.id,
+    type: field.type,
+    label: field.label,
+    template: field.template
   }
-
-  if (isSensor.value) {
-    config.dataKey = form.dataKey
-    config.unit = form.unit
-    const threshold: any = {}
-    if (form.thresholdWarning !== undefined) threshold.warning = form.thresholdWarning
-    if (form.thresholdCritical !== undefined) threshold.critical = form.thresholdCritical
-    if (Object.keys(threshold).length > 0) config.threshold = threshold
+  if (field.type === 'static') result.text = field.text
+  if (field.type === 'realtime' || field.type === 'mapping') result.key = field.key
+  if (field.type === 'expression') result.expression = field.expression
+  if (field.type === 'mapping') result.map = parseMap(field.mapText)
+  if (field.type !== 'static') {
+    result.unit = field.unit
+    result.precision = field.precision
   }
-
-  if (isValve.value) {
-    config.dataKey = form.dataKey
-    config.positionKey = form.positionKey
-  }
-
-  if (isTank.value) {
-    config.pressureKey = form.pressureKey
-    config.temperatureKey = form.temperatureKey
-    config.levelKey = form.levelKey
-    if (form.levelWarning !== undefined) {
-      config.threshold = { ...config.threshold, levelWarning: form.levelWarning }
+  if (field.thresholdMode) {
+    result.threshold = {
+      mode: field.thresholdMode,
+      warning: field.warning,
+      critical: field.critical,
+      min: field.min,
+      max: field.max,
+      equal: field.equal
     }
   }
+  return result
+}
 
-  if (isEngine.value) {
-    config.thrustKey = form.thrustKey
-    config.chamberPressureKey = form.chamberPressureKey
-    config.mixtureRatioKey = form.mixtureRatioKey
-  }
-
-  if (form.type === 'regulator') {
-    config.dataKey = form.dataKey
-    config.setpointKey = form.setpointKey
-  }
-
-  config.handles = form.handles
-
-  emit('confirm', config)
+function handleConfirm() {
+  emit('confirm', {
+    id: form.id,
+    type: form.type,
+    data: {
+      label: form.label || getDefaultLabel(form.type, form.subtype),
+      subtype: form.subtype,
+      displayFields: form.displayFields.map(cleanField),
+      handles: form.handles,
+      actions: form.actions
+    }
+  })
   dialogVisible.value = false
 }
 </script>
 
 <style scoped>
-.threshold-row {
+.section-toolbar {
   display: flex;
-  align-items: center;
-  width: 100%;
+  gap: 8px;
+  margin-bottom: 12px;
 }
+
+.config-collapse {
+  margin-bottom: 12px;
+}
+
+.collapse-title {
+  font-weight: 600;
+}
+
+.field-card {
+  padding: 4px 0;
+}
+
+.row-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
 .handles-config {
   width: 100%;
 }
+
 .handle-row {
   display: flex;
   gap: 8px;
