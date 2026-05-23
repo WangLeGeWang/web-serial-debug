@@ -75,7 +75,13 @@ const componentConfigs = {
     width: 8,
     height: 6,
     resizable: true,
-    title: '图表'
+    title: 'uPlot图表'
+  },
+  'echarts-chart': {
+    width: 10,
+    height: 7,
+    resizable: true,
+    title: '高级图表'
   },
   'table': {
     width: 8,
@@ -185,7 +191,7 @@ const persistDashboardsToProfile = () => {
   const profile = profileManager.activeProfile
   if (!profile) return
 
-  const dashboards = dashboardStore.dashboards.map(dashboard => ({
+  const dashboards = dashboardStore.dashboards.map((dashboard: Dashboard) => ({
     id: dashboard.id,
     name: dashboard.name,
     items: dashboard.items.map(saveItemToConfig)
@@ -341,7 +347,8 @@ onUnmounted(() => {
       <div class="toolbar-left">
         <el-button-group v-if="isEditing" class="tool-group">
           <el-button type="primary" size="small" @click="addComponent('row')">添加行</el-button>
-          <el-button type="primary" size="small" @click="addComponent('chart')">图表</el-button>
+          <el-button type="primary" size="small" @click="addComponent('chart')">uPlot图表</el-button>
+          <el-button type="primary" size="small" @click="addComponent('echarts-chart')">高级图表</el-button>
           <el-button type="primary" size="small" @click="addComponent('table')">数据表</el-button>
           <el-button type="primary" size="small" @click="addComponent('3d')">3D姿态</el-button>
           <el-button type="primary" size="small" @click="addComponent('pipeline')">流程图</el-button>
@@ -476,11 +483,12 @@ onUnmounted(() => {
 
 .canvas-item {
   background: var(--el-bg-color-overlay);
-  border: 1px solid var(--el-border-color);
-  border-radius: 3px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 2px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .canvas-item.title-hidden {
@@ -518,9 +526,10 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   padding: 0 8px;
-  border-radius: 4px 4px 0 0;
+  border-radius: 2px 2px 0 0;
   cursor: move;
-  height: 28px;
+  height: 30px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
   transition: background-color .1s ease-in-out, opacity .1s ease-in-out;
 }
 
@@ -534,21 +543,24 @@ onUnmounted(() => {
 
 :deep(.dark) {
   .canvas-item {
-    border: 1px solid #202226;
+    background: #181b1f;
+    border: 1px solid rgba(204, 204, 220, 0.16);
+    box-shadow: none;
   }
   .item-header:hover {
-    background-color: #202226;
+    background-color: rgba(204, 204, 220, 0.06);
   }
 }
 
 .item-title {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 500;
   color: var(--el-text-color-primary);
   flex: 1;
-  text-align: center;
+  text-align: left;
   margin-right: 24px;
   cursor: pointer;
+  letter-spacing: .01em;
 }
 
 .view-mode .item-title {

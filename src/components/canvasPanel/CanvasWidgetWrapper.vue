@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import CanvasChartPanel from '@/widgets/ChartPanel/CanvasChartPanel.vue'
-import DataTable from '@/components/DataTable.vue'
+import CanvasChartPanel from '../../widgets/ChartPanel/CanvasChartPanel.vue'
+import EChartsTimeSeries from '../../widgets/EChartsTimeSeries/EChartsTimeSeries.vue'
+import DataTable from '../DataTable.vue'
 import ChartIMU from '@/widgets/ChartIMU/ChartIMU.vue'
 import PipelinePanel from '@/widgets/PipelinePanel/PipelinePanel.vue'
 import Sim from '@/widgets/Sim/Sim.vue'
@@ -18,6 +19,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const componentMap: Record<string, any> = {
   'chart': CanvasChartPanel,
+  'echarts-chart': EChartsTimeSeries,
   'table': DataTable,
   '3d': ChartIMU,
   'pipeline': PipelinePanel,
@@ -50,8 +52,8 @@ const widgetComponent = computed(() => {
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: var(--el-bg-color);
-  border-radius: 4px;
+  background: transparent;
+  border-radius: 0;
   overflow: hidden;
 }
 

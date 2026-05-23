@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { realtimeProvider } from '@/utils/RealtimeProvider'
+import { realtimeProvider } from '../../utils/RealtimeProvider'
+import type { DataPoint } from '../../utils/DataSourceProvider'
 
 interface Props {
   visible: boolean
@@ -25,7 +26,7 @@ const localItem = ref<any>(null)
 
 const availableFields = computed(() => {
   const fieldSet = new Set<string>()
-  realtimeProvider.dataPoints.value.forEach(point => {
+  realtimeProvider.dataPoints.value.forEach((point: DataPoint) => {
     Object.keys(point.values).forEach(key => fieldSet.add(key))
   })
   return Array.from(fieldSet).map(key => ({ label: key, value: key }))
@@ -35,7 +36,10 @@ watch(() => props.item, (newItem) => {
   if (newItem) {
     localItem.value = {
       ...newItem,
-      config: newItem.config || getDefaultConfig(newItem.type)
+      config: {
+        ...getDefaultConfig(newItem.type),
+        ...(newItem.config || {})
+      }
     }
   }
 }, { immediate: true })
@@ -46,6 +50,16 @@ const getDefaultConfig = (type: string) => {
       selectedChartId: null,
       fields: [],
       refreshRate: 100
+    },
+    'echarts-chart': {
+      fields: [],
+      maxPoints: 10000,
+      refreshRate: 100,
+      sampling: 'lttb',
+      showArea: true,
+      showSymbol: false,
+      smooth: false,
+      lineWidth: 1.5
     },
     table: {
       columns: [],
@@ -89,6 +103,65 @@ const configSchema = computed(() => {
         label: '绑定字段',
         type: 'multiSelect',
         options: availableFields.value
+      }
+    ],
+    'echarts-chart': [
+      {
+        key: 'fields',
+        label: '绑定字段',
+        type: 'multiSelect',
+        options: availableFields.value
+      },
+      {
+        key: 'maxPoints',
+        label: '最大点数',
+        type: 'number',
+        min: 100,
+        max: 50000,
+        step: 100
+      },
+      {
+        key: 'refreshRate',
+        label: '刷新间隔',
+        type: 'number',
+        min: 16,
+        max: 5000,
+        step: 10
+      },
+      {
+        key: 'sampling',
+        label: '采样方式',
+        type: 'select',
+        options: [
+          { label: 'LTTB', value: 'lttb' },
+          { label: '平均值', value: 'average' },
+          { label: '最大值', value: 'max' },
+          { label: '最小值', value: 'min' },
+          { label: '不采样', value: 'none' }
+        ]
+      },
+      {
+        key: 'lineWidth',
+        label: '线宽',
+        type: 'number',
+        min: 0.5,
+        max: 5,
+        step: 0.5
+      },
+      {
+        key: 'showArea',
+        label: '面积填充',
+        type: 'switch'
+      },
+      {
+        key: 'showSymbol',
+        label: '显示点',
+        type: 'switch'
+      },
+      {
+        key: 'smooth',
+        label: '平滑曲线',
+        type: 'switch'
       }
     ],
     table: [
