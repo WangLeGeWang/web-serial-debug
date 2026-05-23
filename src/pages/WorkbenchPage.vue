@@ -23,7 +23,7 @@ const route = useRoute()
 const workspaceManager = WorkspaceManagerInst
 
 const defaultLayoutConfig: LayoutConfig = {
-  splitPaneSize: 75,
+  splitPaneSize: 100,
   leftActiveTab: '0',
   rightActiveTab: '0'
 }
@@ -31,6 +31,11 @@ const defaultLayoutConfig: LayoutConfig = {
 const { config: localLayoutConfig } = useWorkspaceConfig<LayoutConfig>('layout', defaultLayoutConfig)
 const splitpanesKey = ref(0)
 const activeWorkspaceName = computed(() => workspaceManager.activeWorkspaceRef.value?.name)
+const leftPaneSize = computed(() => {
+  const size = Number(localLayoutConfig.value.splitPaneSize)
+  return Math.min(Math.max(Number.isFinite(size) ? size : defaultLayoutConfig.splitPaneSize, 0), 100)
+})
+const rightPaneSize = computed(() => 100 - leftPaneSize.value)
 
 watch(activeWorkspaceName, (name) => {
   document.title = name ? `${name} - BUS Studio` : 'BUS Studio'
@@ -70,7 +75,7 @@ handleResize()
 <template>
   <AppShell>
     <Splitpanes class="workbench-splitpanes default-theme" :key="splitpanesKey" @resize="handleSplitResize">
-      <Pane :size="localLayoutConfig.splitPaneSize" class="w75">
+      <Pane :size="leftPaneSize" class="w75">
         <el-tabs type="card" class="lv-card lv-tabs" addable v-model="localLayoutConfig.leftActiveTab" @tab-click="handleTabChange">
           <el-tab-pane label="控制台">
             <SerialLog />
@@ -98,7 +103,7 @@ handleResize()
           </el-tab-pane>
         </el-tabs>
       </Pane>
-      <Pane class="w25">
+      <Pane :size="rightPaneSize" class="w25">
         <el-tabs type="card" class="lv-card lv-tabs" v-model="localLayoutConfig.rightActiveTab">
           <el-tab-pane label="快捷发送">
             <SerialQuickSend />
@@ -135,12 +140,8 @@ handleResize()
 .workbench-splitpanes:deep(.splitpanes__pane) {
   background-color: var(--el-bg-color) !important;
 }
-
-.w75 {
-  width: 75%;
+.splitpanes--vertical .splitpanes__pane {
+  transition: none;
 }
 
-.w25 {
-  width: 25%;
-}
 </style>
