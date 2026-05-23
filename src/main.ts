@@ -8,13 +8,13 @@ import './style.css'
 import 'markstream-vue/index.css'
 import App from './App.vue'
 import router from './router'
-import { createRuntimeClient, RuntimeClientKey } from './runtime'
+// import { createRuntimeClient, RuntimeClientKey } from './runtime'
 import { setDataSourceProvider, createRealtimeProvider } from './utils/RealtimeProvider'
 
 async function bootstrap() {
   const app = createApp(App)
   const pinia = createPinia()
-  const runtimeClient = await createRuntimeClient()
+  // const runtimeClient = await createRuntimeClient()
 
   setDataSourceProvider(createRealtimeProvider())
 
@@ -22,7 +22,7 @@ async function bootstrap() {
     app.component(key, component)
   }
 
-  app.provide(RuntimeClientKey, runtimeClient)
+  // app.provide(RuntimeClientKey, runtimeClient)
   app.use(pinia)
   app.use(router)
   app.use(ElementPlus)
