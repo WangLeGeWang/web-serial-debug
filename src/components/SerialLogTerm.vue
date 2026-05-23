@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { computed, ref, onMounted, onUnmounted, watch } from 'vue'
 import { SerialHelper } from '../utils/SerialHelper'
 import { Terminal } from 'xterm'
 import { FitAddon } from 'xterm-addon-fit'
@@ -37,6 +37,11 @@ let timeoutDelt: number = 0
 let terminal: Terminal | null = null
 let fitAddon: FitAddon | null = null
 const receivedBytes = ref(0)
+const formattedReceivedBytes = computed(() => {
+  if (receivedBytes.value < 1024) return `${receivedBytes.value} B`
+  if (receivedBytes.value < 1024 * 1024) return `${(receivedBytes.value / 1024).toFixed(1)} KB`
+  return `${(receivedBytes.value / 1024 / 1024).toFixed(1)} MB`
+})
 
 const clearLog = () => {
   if (terminal) {
@@ -220,96 +225,61 @@ const exportLog = () => {
 
 <template>
   <div class="serial-log">
-    <div class="controls">
-      <el-button-group class="me-2">
+    <div class="terminal-container">
+      <div class="terminal-floating-actions">
         <el-button
-          :type="logOptions.showTime ? 'primary' : 'default'"
-          size="small"
-          @click="toggleOption('showTime')"
-        >
-          时间
-        </el-button>
-        <el-button
-          :type="logOptions.showMs ? 'primary' : 'default'"
-          size="small"
-          @click="toggleOption('showMs')"
-        >
-          毫秒
-        </el-button>
-        <el-button
-          :type="logOptions.showHex ? 'primary' : 'default'"
-          size="small"
-          @click="toggleOption('showHex')"
-        >
-          HEX
-        </el-button>
-        <el-button
-          :type="logOptions.showText ? 'primary' : 'default'"
-          size="small"
-          @click="toggleOption('showText')"
-        >
-          TEXT
-        </el-button>
-        <el-button
-          :type="logOptions.showNewline ? 'primary' : 'default'"
-          size="small"
-          @click="toggleOption('showNewline')"
-        >
-          换行
-        </el-button>
-      </el-button-group>
-
-      <el-button-group class="me-2" style="white-space: nowrap;">
-        <el-button
-          :type="logOptions.autoScroll ? 'primary' : 'default'"
+          class="floating-button auto-scroll-button"
+          :class="{ active: logOptions.autoScroll }"
           size="small"
           @click="toggleOption('autoScroll')"
         >
           自动滚动
         </el-button>
         <el-button
-          type="danger"
+          class="floating-button clear-button"
           size="small"
           @click="clearLog"
         >
           清空
         </el-button>
-        <el-button
-          type="primary"
-          size="small"
-          @click="exportLog"
-        >
-          导出
-        </el-button>
-      </el-button-group>
-
-      <el-tooltip
-        class="box-item"
-        effect="dark"
-        content="分包超时时间(ms)"
-        placement="bottom"
-      >
-        <el-input-number
-          v-model="logOptions.timeOut"
-          :min="0"
-          :max="3000"
-          :step="5"
-          size="small"
-        >
-          <template #prefix></template>
-          <template #suffix>
-            <span>ms</span>
+        <el-popover trigger="click" placement="bottom-end" width="240" popper-class="terminal-options-popover">
+          <template #reference>
+            <el-button class="floating-button more-button" :icon="'MoreFilled'" size="small" />
           </template>
-        </el-input-number>
-      </el-tooltip>
-
-      <div class="received-bytes">
-        <span>接收: {{ receivedBytes }} 字节</span>
+          <div class="terminal-options-panel">
+            <div class="options-section">
+              <div class="options-title">显示选项</div>
+              <el-checkbox v-model="logOptions.showTime">时间</el-checkbox>
+              <el-checkbox v-model="logOptions.showMs">毫秒</el-checkbox>
+              <el-checkbox v-model="logOptions.showHex">HEX</el-checkbox>
+              <el-checkbox v-model="logOptions.showText">TEXT</el-checkbox>
+              <el-checkbox v-model="logOptions.showNewline">换行</el-checkbox>
+            </div>
+            <div class="options-section">
+              <div class="options-title">分包超时</div>
+              <el-input-number
+                v-model="logOptions.timeOut"
+                :min="0"
+                :max="3000"
+                :step="5"
+                size="small"
+              >
+                <template #suffix>
+                  <span>ms</span>
+                </template>
+              </el-input-number>
+            </div>
+            <div class="options-section">
+              <div class="options-title">操作</div>
+              <el-button class="export-button" size="small" @click="exportLog">导出日志</el-button>
+            </div>
+          </div>
+        </el-popover>
       </div>
-    </div>
-
-    <div class="terminal-container">
       <div id="terminal"></div>
+      <div class="terminal-floating-status">
+        接收 {{ formattedReceivedBytes }}
+      </div>
     </div>
   </div>
 </template>
@@ -318,33 +288,107 @@ const exportLog = () => {
 .serial-log {
   display: flex;
   flex-direction: column;
+  height: 100%;
 }
+
 .serial-log :deep(.el-card__body) {
   flex: 1;
   overflow: hidden;
 }
 
-.controls {
-  display: flex;
-  align-items: center;
-  padding: 12px;
-}
-
 .terminal-container {
+  position: relative;
   height: 100%;
+  overflow: hidden;
 }
 
 #terminal {
   height: 100%;
 }
 
-.me-2 {
-  margin-right: 8px;
+.terminal-floating-actions {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--el-bg-color-overlay) 82%, transparent);
+  box-shadow: var(--el-box-shadow-lighter);
+  backdrop-filter: blur(10px);
 }
 
-.received-bytes {
-  margin-left: 16px;
+.terminal-floating-actions :deep(.el-button + .el-button) {
+  margin-left: 0;
+}
+
+.floating-button {
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
   color: var(--el-text-color-regular);
-  font-size: 14px;
+}
+
+.floating-button:hover,
+.floating-button.active {
+  border-color: var(--el-color-primary-light-5);
+  background: var(--el-color-primary-light-9);
+  color: var(--el-color-primary);
+}
+
+.clear-button:hover {
+  border-color: var(--el-color-danger-light-5);
+  background: var(--el-color-danger-light-9);
+  color: var(--el-color-danger);
+}
+
+.more-button {
+  width: 26px;
+  padding: 0;
+}
+
+.terminal-floating-status {
+  position: absolute;
+  right: 12px;
+  bottom: 10px;
+  z-index: 10;
+  padding: 4px 9px;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--el-bg-color-overlay) 78%, transparent);
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+  line-height: 18px;
+  box-shadow: var(--el-box-shadow-lighter);
+  backdrop-filter: blur(10px);
+  pointer-events: none;
+}
+
+.terminal-options-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.options-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.options-title {
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.export-button {
+  align-self: flex-start;
 }
 </style>
