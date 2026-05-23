@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, onMounted, watch } from 'vue'
+import { computed, ref, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import SerialLog from '../components/SerialLog.vue'
 import PipelinePanel from '../widgets/PipelinePanel/PipelinePanel.vue'
@@ -14,6 +14,8 @@ import CanvasPanel from '../components/canvasPanel/CanvasPanel.vue'
 import AppShell from '../layouts/AppShell.vue'
 import { useWorkspaceConfig } from '../utils/useWorkspaceConfig'
 import { WorkspaceManagerInst } from '../utils/ProfileManager'
+import { EventCenter, EventNames } from '../utils/EventCenter'
+import { useDataStore } from '../store/fieldStore'
 import type { LayoutConfig } from '../components/types'
 // @ts-ignore
 import { Splitpanes, Pane } from 'splitpanes'
@@ -21,6 +23,8 @@ import 'splitpanes/dist/splitpanes.css'
 
 const route = useRoute()
 const workspaceManager = WorkspaceManagerInst
+const eventCenter = EventCenter.getInstance()
+const dataStore = useDataStore()
 
 const defaultLayoutConfig: LayoutConfig = {
   splitPaneSize: 100,
@@ -30,7 +34,9 @@ const defaultLayoutConfig: LayoutConfig = {
 
 const { config: localLayoutConfig } = useWorkspaceConfig<LayoutConfig>('layout', defaultLayoutConfig)
 const splitpanesKey = ref(0)
-const activeWorkspaceName = computed(() => workspaceManager.activeWorkspaceRef.value?.name)
+const activeWorkspace = computed(() => workspaceManager.activeWorkspaceRef.value)
+const activeWorkspaceName = computed(() => activeWorkspace.value?.name)
+const autoAddField = computed(() => activeWorkspace.value?.config?.autoAddField ?? true)
 const leftPaneSize = computed(() => {
   const size = Number(localLayoutConfig.value.splitPaneSize)
   return Math.min(Math.max(Number.isFinite(size) ? size : defaultLayoutConfig.splitPaneSize, 0), 100)
@@ -41,7 +47,17 @@ watch(activeWorkspaceName, (name) => {
   document.title = name ? `${name} - BUS Studio` : 'BUS Studio'
 }, { immediate: true })
 
+watch(activeWorkspace, () => {
+  dataStore.loadFromProfile()
+}, { immediate: true })
+
+const handleDataUpdate = (data: any) => {
+  dataStore.handleDataUpdate(data, autoAddField.value)
+}
+
 onMounted(() => {
+  eventCenter.on(EventNames.DATA_UPDATE, handleDataUpdate)
+
   const workspaceId = typeof route.query.workspace === 'string' ? route.query.workspace : null
   if (workspaceId) {
     const exists = workspaceManager.workspacesRef.value.some(w => w.id === workspaceId)
@@ -52,6 +68,10 @@ onMounted(() => {
   setTimeout(() => {
     splitpanesKey.value++
   }, 100)
+})
+
+onUnmounted(() => {
+  eventCenter.off(EventNames.DATA_UPDATE, handleDataUpdate)
 })
 
 const handleSplitResize = (options: { size: number}[]) => {

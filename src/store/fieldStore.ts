@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import { ProfileManagerInst } from '../utils/ProfileManager'
 
 export interface DataField {
@@ -123,6 +123,19 @@ export const useFieldStore = defineStore('field', () => {
     return field
   }
 
+  const handleDataUpdate = (data: any, autoAddField = true) => {
+    if (typeof data !== 'object' || data === null) return
+
+    Object.entries(data).forEach(([key, value]) => {
+      const existingField = fields.value.find(f => f.key === key)
+      if (existingField) {
+        updateField(existingField, value)
+      } else if (autoAddField) {
+        createField(key, value)
+      }
+    })
+  }
+
   const updateField = (field: DataField, value: any) => {
     field.value = value
     field.lastUpdate = Date.now()
@@ -191,6 +204,7 @@ export const useFieldStore = defineStore('field', () => {
     nextId,
     columnVisibility,
     createField,
+    handleDataUpdate,
     updateField,
     deleteField,
     exportData,

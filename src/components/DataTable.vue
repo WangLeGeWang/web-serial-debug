@@ -1,8 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, computed } from 'vue'
 import { useDataStore } from '../store/fieldStore'
-import { EventCenter, EventNames } from '../utils/EventCenter'
-import { WorkspaceManagerInst } from '../utils/ProfileManager'
 
 interface Props {
   readonly?: boolean
@@ -12,26 +9,7 @@ const props = withDefaults(defineProps<Props>(), {
   readonly: false
 })
 
-const eventCenter = EventCenter.getInstance()
 const dataStore = useDataStore()
-const workspaceManager = WorkspaceManagerInst
-
-const activeWorkspace = computed(() => workspaceManager.activeWorkspace)
-const autoAddField = computed(() => activeWorkspace.value?.config?.autoAddField ?? true)
-
-
-const handleDataKey = (data: any) => {
-  if (typeof data !== 'object' || data === null) return
-
-  Object.entries(data).forEach(([key, value]) => {
-    const existingField = dataStore.fields.find(f => f.key === key)
-    if (existingField) {
-      dataStore.updateField(existingField, value)
-    } else if (autoAddField.value) {
-      dataStore.fields.push(dataStore.createField(key, value))
-    }
-  })
-}
 
 const addNewField = () => {
   dataStore.createField('new_field', '')
@@ -54,14 +32,6 @@ const resetData = () => {
   dataStore.saveToProfile()
 }
 
-onMounted(() => {
-  dataStore.loadFromProfile()
-  eventCenter.on(EventNames.DATA_UPDATE, handleDataKey)
-})
-
-onUnmounted(() => {
-  eventCenter.off(EventNames.DATA_UPDATE, handleDataKey)
-})
 </script>
 
 <template>
