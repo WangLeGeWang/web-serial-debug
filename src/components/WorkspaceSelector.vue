@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import SerialScripts from './SerialScript.vue'
 import { ScriptManager } from '../utils/ScriptManager'
 import { EventCenter, EventNames } from '../utils/EventCenter'
 import { WorkspaceManagerInst, isConnected, connectedDeviceId, type Workspace } from '../utils/ProfileManager'
@@ -27,6 +28,15 @@ const serialReader = ref<ReadableStreamDefaultReader | null>(null)
 
 const showWorkspacePopover = ref(false)
 const showSettings = ref(false)
+const activeSettingsSection = ref('basic')
+
+const settingsSections = [
+  { key: 'basic', label: '基本信息', description: '工作区名称与基础行为' },
+  { key: 'device', label: '默认设备', description: '设备选择、串口参数与连接测试' },
+  { key: 'script', label: '脚本', description: '编辑脚本并模拟数据测试' },
+  { key: 'data', label: '数据与字段', description: '自动字段与数据处理策略' },
+  { key: 'layout', label: '界面布局', description: '布局与右侧栏迁移设置' }
+]
 
 const refreshDesktopDevices = async () => {
   if (!isDesktop()) return
@@ -87,6 +97,7 @@ const openSettings = () => {
   if (workspace) {
     loadWorkspaceSettings(workspace)
   }
+  activeSettingsSection.value = 'basic'
   showSettings.value = true
 }
 
@@ -522,6 +533,34 @@ const getConnectedDeviceName = computed(() => {
   const device = authorizedDevices.value.find(d => d.id === connectedDeviceId.value)
   return device?.title || '未知设备'
 })
+
+const savedDeviceSummary = computed(() => {
+  const savedDevice = activeWorkspace.value?.config?.savedDevice as { deviceType?: string; deviceId?: string; deviceTitle?: string } | undefined
+  if (!savedDevice?.deviceId) return '未设置默认设备'
+  return `${savedDevice.deviceTitle || savedDevice.deviceId} / ${savedDevice.deviceId} / ${getDeviceTypeLabel(savedDevice.deviceType || '')}`
+})
+
+const isTestingWorkspaceDevice = computed(() => isConnected.value && connectedDeviceId.value === workspaceDeviceId.value)
+
+const testWorkspaceDevice = async () => {
+  if (isTestingWorkspaceDevice.value) {
+    await disconnectDevice()
+    return
+  }
+  if (!workspaceDeviceId.value) {
+    ElMessage.warning('请先选择默认设备')
+    return
+  }
+  const device = authorizedDevices.value.find(d => d.id === workspaceDeviceId.value) as Device | undefined
+  if (!device) {
+    ElMessage.warning('默认设备不在已授权设备列表中，请重新授权')
+    return
+  }
+  if (isConnected.value && connectedDeviceId.value !== device.id) {
+    await disconnectDevice()
+  }
+  await connectDevice(device, false)
+}
 </script>
 
 <template>
@@ -622,73 +661,147 @@ const getConnectedDeviceName = computed(() => {
     <el-dialog
       v-model="showSettings"
       title="工作区设置"
-      width="600px"
-      top="50px"
+      width="980px"
+      top="40px"
+      class="workspace-settings-dialog"
     >
-      <el-form label-width="100px">
-        <el-divider>基本设置</el-divider>
-        
-        <el-form-item label="名称">
-          <el-input v-model="workspaceName" placeholder="工作区名称" />
-        </el-form-item>
-        <el-form-item label="设备">
-          <el-select v-model="workspaceDeviceId" placeholder="选择设备" clearable style="width: 100%;">
-            <el-option
-              v-for="device in authorizedDevices"
-              :key="device.id"
-              :label="device.title"
-              :value="device.id"
+      <div class="settings-layout">
+        <div class="settings-sidebar">
+          <button
+            v-for="section in settingsSections"
+            :key="section.key"
+            class="settings-nav-item"
+            :class="{ active: activeSettingsSection === section.key }"
+            @click="activeSettingsSection = section.key"
+          >
+            <span class="settings-nav-label">{{ section.label }}</span>
+            <span class="settings-nav-desc">{{ section.description }}</span>
+          </button>
+        </div>
+
+        <div class="settings-content">
+          <section v-show="activeSettingsSection === 'basic'" class="settings-section-panel">
+            <div class="settings-section-header">
+              <h3>基本信息</h3>
+              <p>管理当前工作区名称、基础行为和默认设备摘要。</p>
+            </div>
+            <el-form label-width="110px">
+              <el-form-item label="名称">
+                <el-input v-model="workspaceName" placeholder="工作区名称" />
+              </el-form-item>
+              <el-form-item label="工作区 ID">
+                <el-input :model-value="activeWorkspace?.id || ''" disabled />
+              </el-form-item>
+              <el-form-item label="默认设备">
+                <el-text>{{ savedDeviceSummary }}</el-text>
+              </el-form-item>
+              <el-form-item label="自动重连">
+                <el-switch v-model="autoReconnect" />
+              </el-form-item>
+              <el-form-item label="自动添加字段">
+                <el-switch v-model="autoAddField" />
+              </el-form-item>
+            </el-form>
+          </section>
+
+          <section v-show="activeSettingsSection === 'device'" class="settings-section-panel">
+            <div class="settings-section-header">
+              <h3>默认设备</h3>
+              <p>选择工作区默认设备，调整连接参数，并直接进行连接测试。</p>
+            </div>
+            <el-form label-width="110px">
+              <el-form-item label="已授权设备">
+                <div class="device-select-row">
+                  <el-select v-model="workspaceDeviceId" placeholder="选择设备" clearable style="width: 100%;">
+                    <el-option
+                      v-for="device in authorizedDevices"
+                      :key="device.id"
+                      :label="`${device.title} / ${getDeviceTypeLabel(device.type)}`"
+                      :value="device.id"
+                    />
+                  </el-select>
+                  <el-button :type="isTestingWorkspaceDevice ? 'danger' : 'primary'" @click="testWorkspaceDevice">
+                    {{ isTestingWorkspaceDevice ? '停止测试' : '测试连接' }}
+                  </el-button>
+                </div>
+              </el-form-item>
+              <el-form-item label="连接状态">
+                <el-tag :type="isConnected ? 'success' : 'info'">
+                  {{ isConnected ? `已连接：${getConnectedDeviceName}` : '未连接' }}
+                </el-tag>
+              </el-form-item>
+              <el-divider>串口参数</el-divider>
+              <div class="compact-form-grid">
+                <el-form-item label="波特率">
+                  <el-select v-model="serialConfig.baudRate" style="width: 100%;">
+                    <el-option v-for="rate in baudRates" :key="rate" :label="rate.toString()" :value="rate" />
+                  </el-select>
+                </el-form-item>
+                <el-form-item label="数据位">
+                  <el-select v-model="serialConfig.dataBits" style="width: 100%;">
+                    <el-option v-for="bits in [8, 7, 6, 5]" :key="bits" :label="bits.toString()" :value="bits" />
+                  </el-select>
+                </el-form-item>
+                <el-form-item label="停止位">
+                  <el-select v-model="serialConfig.stopBits" style="width: 100%;">
+                    <el-option v-for="bits in [1, 2]" :key="bits" :label="bits.toString()" :value="bits" />
+                  </el-select>
+                </el-form-item>
+                <el-form-item label="校验位">
+                  <el-select v-model="serialConfig.parity" style="width: 100%;">
+                    <el-option label="无" value="none" />
+                    <el-option label="奇校验" value="odd" />
+                    <el-option label="偶校验" value="even" />
+                  </el-select>
+                </el-form-item>
+                <el-form-item label="流控制">
+                  <el-select v-model="serialConfig.flowControl" style="width: 100%;">
+                    <el-option label="无" value="none" />
+                    <el-option label="硬件流控" value="hardware" />
+                  </el-select>
+                </el-form-item>
+              </div>
+              <el-divider>WebSocket</el-divider>
+              <el-form-item label="WebSocket">
+                <el-input v-model="wsConfig.url" placeholder="ws://localhost:8080" />
+              </el-form-item>
+            </el-form>
+          </section>
+
+          <section v-show="activeSettingsSection === 'script'" class="settings-section-panel">
+            <div class="settings-section-header">
+              <h3>脚本</h3>
+              <p>脚本在工作区内保存，可在这里编辑、运行，并用模拟数据验证接收处理逻辑。</p>
+            </div>
+            <SerialScripts embedded editor-height="360px" />
+          </section>
+
+          <section v-show="activeSettingsSection === 'data'" class="settings-section-panel">
+            <div class="settings-section-header">
+              <h3>数据与字段</h3>
+              <p>当前先保留高频字段行为设置，后续可迁移字段管理和显示策略。</p>
+            </div>
+            <el-form label-width="110px">
+              <el-form-item label="自动添加字段">
+                <el-switch v-model="autoAddField" />
+              </el-form-item>
+            </el-form>
+          </section>
+
+          <section v-show="activeSettingsSection === 'layout'" class="settings-section-panel">
+            <div class="settings-section-header">
+              <h3>界面布局</h3>
+              <p>右侧栏会逐步减少功能，脚本编辑与测试已迁移到工作区设置中。</p>
+            </div>
+            <el-alert
+              title="右侧栏迁移提示"
+              type="info"
+              :closable="false"
+              description="当前右侧栏仍保留脚本入口用于兼容；后续可以把它弱化为打开工作区设置的快捷入口。"
             />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="自动重连">
-          <el-switch v-model="autoReconnect" />
-        </el-form-item>
-        <el-form-item label="自动添加字段">
-          <el-switch v-model="autoAddField" />
-        </el-form-item>
-        
-        <el-divider>串口参数</el-divider>
-        
-        <el-form-item label="波特率">
-          <el-select v-model="serialConfig.baudRate" style="width: 100%;">
-            <el-option v-for="rate in baudRates" :key="rate" :label="rate.toString()" :value="rate" />
-          </el-select>
-        </el-form-item>
-        
-        <el-form-item label="数据位">
-          <el-select v-model="serialConfig.dataBits" style="width: 100%;">
-            <el-option v-for="bits in [8, 7, 6, 5]" :key="bits" :label="bits.toString()" :value="bits" />
-          </el-select>
-        </el-form-item>
-        
-        <el-form-item label="停止位">
-          <el-select v-model="serialConfig.stopBits" style="width: 100%;">
-            <el-option v-for="bits in [1, 2]" :key="bits" :label="bits.toString()" :value="bits" />
-          </el-select>
-        </el-form-item>
-        
-        <el-form-item label="校验位">
-          <el-select v-model="serialConfig.parity" style="width: 100%;">
-            <el-option label="无" value="none" />
-            <el-option label="奇校验" value="odd" />
-            <el-option label="偶校验" value="even" />
-          </el-select>
-        </el-form-item>
-        
-        <el-form-item label="流控制">
-          <el-select v-model="serialConfig.flowControl" style="width: 100%;">
-            <el-option label="无" value="none" />
-            <el-option label="硬件流控" value="hardware" />
-          </el-select>
-        </el-form-item>
-        
-        <el-divider>WebSocket</el-divider>
-        
-        <el-form-item label="WebSocket">
-          <el-input v-model="wsConfig.url" placeholder="ws://localhost:8080" />
-        </el-form-item>
-      </el-form>
+          </section>
+        </div>
+      </div>
       
       <template #footer>
         <el-button @click="showSettings = false">取消</el-button>
@@ -838,5 +951,104 @@ const getConnectedDeviceName = computed(() => {
   white-space: nowrap;
   margin: 0;
   padding: 5px;
+}
+
+.settings-layout {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  min-height: 560px;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.settings-sidebar {
+  padding: 10px;
+  background: var(--el-fill-color-lighter);
+  border-right: 1px solid var(--el-border-color-lighter);
+}
+
+.settings-nav-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  padding: 10px 12px;
+  margin: 0 0 6px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--el-text-color-regular);
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.settings-nav-item:hover {
+  background: var(--el-fill-color);
+}
+
+.settings-nav-item.active {
+  background: var(--el-color-primary-light-9);
+  color: var(--el-color-primary);
+}
+
+.settings-nav-label {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.settings-nav-desc {
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--el-text-color-secondary);
+}
+
+.settings-content {
+  min-width: 0;
+  max-height: 640px;
+  padding: 18px 22px;
+  overflow: auto;
+}
+
+.settings-section-panel {
+  min-width: 0;
+}
+
+.settings-section-header {
+  margin-bottom: 18px;
+}
+
+.settings-section-header h3 {
+  margin: 0 0 6px;
+  font-size: 18px;
+  color: var(--el-text-color-primary);
+}
+
+.settings-section-header p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--el-text-color-secondary);
+}
+
+.device-select-row {
+  display: flex;
+  width: 100%;
+  gap: 8px;
+}
+
+.device-select-row .el-button {
+  flex-shrink: 0;
+}
+
+.compact-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 16px;
+  row-gap: 2px;
+}
+
+.compact-form-grid :deep(.el-form-item) {
+  margin-bottom: 12px;
 }
 </style>

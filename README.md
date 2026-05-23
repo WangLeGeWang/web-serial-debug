@@ -1,12 +1,15 @@
-# [Web Serial Debugger](https://qdsang.github.io/web-serial-debug/)
+# [BUS Studio](https://qdsang.github.io/web-serial-debug/)
 
-基于 Web 的串口调试工具。 [https://qdsang.github.io/web-serial-debug/](https://qdsang.github.io/web-serial-debug/)
+Bus Studio 串口监听和调试， 支持 UART、蓝牙、websocket、stlink等等。
+提供WEB网页 和 桌面端版本。 [https://qdsang.github.io/web-serial-debug/](https://qdsang.github.io/web-serial-debug/)
 
 ## Demo
 
 <table>
 <tr>
-    <td><img src="./docs/1.png" title="Serial Debugger Preview" /></td>
+    <td colspan="2"><img src="./docs/1.png" title="Serial Debugger Preview" /></td>
+</tr>
+<tr>
     <td><img src="./docs/2.png" title="Serial Debugger Preview" /></td>
     <td><img src="./docs/3.png" title="Serial Debugger Preview" /></td>
 </tr>
@@ -16,7 +19,7 @@
 ## 功能特点
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                       BUS Tool                          │
+│                       BUS Studio                          │
 ├─────────────────────────────────────────────────────────┤
 │  🔌 连接层          │  📡 协议层        │  📊 数据层   │
 │  ├─ 串口            │  ├─ 自定义协议    │  ├─ 实时数据  │

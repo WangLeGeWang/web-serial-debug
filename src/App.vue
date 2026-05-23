@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import SerialLog from './components/SerialLog.vue'
 import PipelinePanel from './widgets/PipelinePanel/PipelinePanel.vue'
 import ChartIMU from './widgets/ChartIMU/ChartIMU.vue'
@@ -31,6 +31,7 @@ const defaultLayoutConfig: LayoutConfig = {
 const { config: localLayoutConfig } = useWorkspaceConfig<LayoutConfig>('layout', defaultLayoutConfig)
 
 const splitpanesKey = ref(0)
+const isHelpWindow = computed(() => new URLSearchParams(window.location.search).get('help') === '1')
 
 onMounted(() => {
   const urlParams = new URLSearchParams(window.location.search)
@@ -41,9 +42,11 @@ onMounted(() => {
       workspaceManager.setActiveWorkspace(workspaceId)
     }
   }
-  setTimeout(() => {
-    splitpanesKey.value++
-  }, 100)
+  if (!isHelpWindow.value) {
+    setTimeout(() => {
+      splitpanesKey.value++
+    }, 100)
+  }
 })
 
 const isDark = useDark({
@@ -54,15 +57,46 @@ const toggleDark = useToggle(isDark)
 
 const isFullscreen = ref(false)
 
-const toggleFullscreen = () => {
+const syncFullscreenState = () => {
+  isFullscreen.value = Boolean(document.fullscreenElement)
+}
+
+const toggleFullscreen = async () => {
   if (!document.fullscreenElement) {
-    document.documentElement.requestFullscreen()
-    isFullscreen.value = true
+    await document.documentElement.requestFullscreen()
   } else {
-    document.exitFullscreen()
-    isFullscreen.value = false
+    await document.exitFullscreen()
+  }
+  syncFullscreenState()
+}
+
+const openHelpWindow = () => {
+  const url = new URL(window.location.href)
+  url.searchParams.set('help', '1')
+  window.open(url.toString(), '_blank', 'noopener,noreferrer')
+}
+
+const handleMoreCommand = (command: string) => {
+  if (command === 'theme') {
+    toggleDark()
+    return
+  }
+  if (command === 'fullscreen') {
+    toggleFullscreen()
+    return
+  }
+  if (command === 'help') {
+    openHelpWindow()
   }
 }
+
+onMounted(() => {
+  document.addEventListener('fullscreenchange', syncFullscreenState)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('fullscreenchange', syncFullscreenState)
+})
 
 const handleSplitResize = (options: { size: number}[]) => {
   localLayoutConfig.value.splitPaneSize = options[0].size
@@ -84,7 +118,8 @@ handleResize()
 </script>
 
 <template>
-  <el-container class="app-container">
+  <MarkdownPanel v-if="isHelpWindow" class="help-window" />
+  <el-container v-else class="app-container">
     <el-header class="app-header">
       <div class="header-content">
         <div class="header-left">
@@ -92,18 +127,20 @@ handleResize()
           <WorkspaceSelector class="header-workspace-selector" />
         </div>
         <div class="header-links">
-          <el-button
-            class="theme-toggle"
-            :icon="isDark ? 'Sunny' : 'Moon'"
-            circle
-            @click="toggleDark()"
-          />
-          <el-button
-            class="fullscreen-toggle"
-            :icon="'FullScreen'"
-            circle
-            @click="toggleFullscreen()"
-          />
+          <el-dropdown trigger="click" placement="bottom-end" @command="handleMoreCommand">
+            <el-button class="more-toggle" :icon="'MoreFilled'" />
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item command="theme" :icon="isDark ? 'Sunny' : 'Moon'">
+                  {{ isDark ? '浅色模式' : '深色模式' }}
+                </el-dropdown-item>
+                <el-dropdown-item command="fullscreen" :icon="isFullscreen ? 'Aim' : 'FullScreen'">
+                  {{ isFullscreen ? '退出全屏' : '进入全屏' }}
+                </el-dropdown-item>
+                <el-dropdown-item command="help" icon="QuestionFilled">帮助</el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
         </div>
       </div>
     </el-header>
@@ -134,9 +171,6 @@ handleResize()
             </el-tab-pane>
             <el-tab-pane label="画板" lazy>
               <CanvasPanel />
-            </el-tab-pane>
-            <el-tab-pane label="帮助" lazy>
-              <MarkdownPanel />
             </el-tab-pane>
           </el-tabs>
         </Pane>
@@ -197,7 +231,6 @@ handleResize()
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  text-fill-color: transparent;
   letter-spacing: -0.5px;
 }
 
@@ -267,8 +300,27 @@ handleResize()
   background-color: var(--el-bg-color-overlay);
 }
 
-.fullscreen-toggle {
-  margin-left: 0px;
+.help-window {
+  min-height: 100vh;
+  background-color: var(--el-bg-color-overlay);
+}
+
+.header-links .more-toggle {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  margin-left: 0;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  box-shadow: none;
+}
+
+.header-links .more-toggle:hover,
+.header-links .more-toggle:focus {
+  background: var(--el-color-primary-light-9);
+  border-color: var(--el-color-primary);
+  color: var(--el-color-primary);
 }
 
 .lv-card {
