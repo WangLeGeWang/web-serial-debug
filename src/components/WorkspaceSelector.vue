@@ -325,7 +325,7 @@ const attemptAutoReconnect = async (deviceId: string | null) => {
   const workspace = activeWorkspace.value
   if (!workspace?.config?.autoReconnect) return
   
-  let device = authorizedDevices.value.find(d => d.id === deviceId)
+  let device = authorizedDevices.value.find(d => d.id === deviceId) as Device | undefined
   if (!device) {
     const savedDevice = workspace?.config?.savedDevice as { deviceType: string; deviceId?: string } | undefined
     if (savedDevice?.deviceId === 'mock_imu') {
@@ -348,7 +348,7 @@ const handleConnectClick = async () => {
     const savedDevice = workspace?.config?.savedDevice as { deviceType: string; deviceId?: string } | undefined
     
     if (savedDevice?.deviceId) {
-      let device = authorizedDevices.value.find(d => d.id === savedDevice.deviceId)
+      let device = authorizedDevices.value.find(d => d.id === savedDevice.deviceId) as Device | undefined
       
       if (savedDevice.deviceType === 'serialport' && navigator.serial) {
         const ports = await navigator.serial.getPorts()
@@ -360,7 +360,7 @@ const handleConnectClick = async () => {
         
         if (!existingPort && device) {
           authorizedDevices.value = authorizedDevices.value.filter(d => d.id !== savedDevice.deviceId)
-          device = null
+          device = undefined
         } else if (existingPort && !device) {
           const { SerialPortDevice } = await import('../devices/serialport')
           device = new SerialPortDevice(existingPort) as unknown as Device
@@ -514,6 +514,10 @@ const handleDeviceSelect = async (device: Device) => {
   }
 }
 
+const handleDeviceItemClick = async (device: unknown) => {
+  await handleDeviceSelect(device as Device)
+}
+
 const getDeviceTypeLabel = (type: string) => {
   const labels: Record<string, string> = {
     'serialport': '串口设备',
@@ -538,6 +542,22 @@ const savedDeviceSummary = computed(() => {
   const savedDevice = activeWorkspace.value?.config?.savedDevice as { deviceType?: string; deviceId?: string; deviceTitle?: string } | undefined
   if (!savedDevice?.deviceId) return '未设置默认设备'
   return `${savedDevice.deviceTitle || savedDevice.deviceId} / ${savedDevice.deviceId} / ${getDeviceTypeLabel(savedDevice.deviceType || '')}`
+})
+
+const workspaceTriggerDeviceSummary = computed(() => {
+  const savedDevice = activeWorkspace.value?.config?.savedDevice as { deviceType?: string; deviceId?: string; deviceTitle?: string } | undefined
+  if (savedDevice?.deviceId) {
+    const deviceName = savedDevice.deviceTitle || savedDevice.deviceId
+    const deviceType = getDeviceTypeLabel(savedDevice.deviceType || '')
+    return deviceType ? `${deviceName} / ${deviceType}` : deviceName
+  }
+
+  const device = authorizedDevices.value.find(d => d.id === activeWorkspace.value?.deviceId)
+  if (device) {
+    return `${device.title} / ${getDeviceTypeLabel(device.type)}`
+  }
+
+  return '未选择设备'
 })
 
 const isTestingWorkspaceDevice = computed(() => isConnected.value && connectedDeviceId.value === workspaceDeviceId.value)
@@ -573,7 +593,10 @@ const testWorkspaceDevice = async () => {
     >
       <template #reference>
         <div class="workspace-trigger">
-          <span class="workspace-name">{{ activeWorkspace?.name || '选择工作区' }}</span>
+          <div class="workspace-trigger-content">
+            <span class="workspace-name">{{ activeWorkspace?.name || '选择工作区' }}</span>
+            <span class="workspace-device-summary">{{ workspaceTriggerDeviceSummary }}</span>
+          </div>
           <el-icon class="arrow-icon"><ArrowDown /></el-icon>
         </div>
       </template>
@@ -589,7 +612,7 @@ const testWorkspaceDevice = async () => {
             :key="device.id"
             class="device-item"
             :class="{ active: connectedDeviceId === device.id }"
-            @click="handleDeviceSelect(device)"
+            @click="handleDeviceItemClick(device)"
           >
             <div class="device-info">
               <span class="device-name">{{ device.title }}</span>
@@ -646,15 +669,20 @@ const testWorkspaceDevice = async () => {
       </div>
     </el-popover>
     
-    <el-button 
-      :type="isConnected ? 'danger' : 'primary'" 
-      size="small" 
+    <el-button
+      class="workspace-connect-button"
+      :class="{ connected: isConnected }"
+      :type="isConnected ? 'danger' : 'primary'"
+      size="small"
       @click="handleConnectClick"
     >
-      {{ isConnected ? '断开' : '连接' }}
+      <el-icon>
+        <VideoPause v-if="isConnected" />
+        <VideoPlay v-else />
+      </el-icon>
     </el-button>
     
-    <el-button size="small" circle @click="openSettings">
+    <el-button class="workspace-icon-button" size="small" @click="openSettings">
       <el-icon><Setting /></el-icon>
     </el-button>
     
@@ -821,30 +849,85 @@ const testWorkspaceDevice = async () => {
 .workspace-trigger {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 12px;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 158px;
+  height: 36px;
+  padding: 1px 10px;
   background: var(--el-fill-color-light);
-  border-radius: 4px;
+  border: 1px solid transparent;
+  border-radius: 7px;
   cursor: pointer;
   font-size: 14px;
-  transition: background 0.2s;
-  min-width: 40px;
+  transition: background 0.2s, border-color 0.2s;
 }
 
 .workspace-trigger:hover {
   background: var(--el-fill-color);
+  border-color: var(--el-border-color-lighter);
+}
+
+.workspace-trigger-content {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0;
 }
 
 .workspace-name {
-  max-width: 150px;
+  max-width: 138px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  color: var(--el-text-color-primary);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 16px;
+}
+
+.workspace-device-summary {
+  max-width: 138px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--el-text-color-secondary);
+  font-size: 10px;
+  line-height: 12px;
 }
 
 .arrow-icon {
+  flex: 0 0 auto;
   font-size: 12px;
   color: var(--el-text-color-secondary);
+}
+
+.workspace-connect-button,
+.workspace-icon-button {
+  width: 36px;
+  height: 36px;
+  margin-left: 0;
+  padding: 0;
+  border-radius: 8px;
+}
+
+.workspace-connect-button :deep(.el-icon),
+.workspace-icon-button :deep(.el-icon) {
+  font-size: 20px;
+}
+
+.workspace-icon-button {
+  border-color: transparent;
+  background: transparent;
+  color: var(--el-text-color-regular);
+}
+
+.workspace-icon-button:hover,
+.workspace-icon-button:focus {
+  border-color: var(--el-border-color-lighter);
+  background: var(--el-fill-color-light);
+  color: var(--el-color-primary);
 }
 
 .workspace-menu {
