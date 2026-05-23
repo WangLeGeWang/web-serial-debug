@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { computed, ref, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import SerialLog from '../components/SerialLog.vue'
 import PipelinePanel from '../widgets/PipelinePanel/PipelinePanel.vue'
@@ -30,6 +30,11 @@ const defaultLayoutConfig: LayoutConfig = {
 
 const { config: localLayoutConfig } = useWorkspaceConfig<LayoutConfig>('layout', defaultLayoutConfig)
 const splitpanesKey = ref(0)
+const activeWorkspaceName = computed(() => workspaceManager.activeWorkspaceRef.value?.name)
+
+watch(activeWorkspaceName, (name) => {
+  document.title = name ? `${name} - BUS Studio` : 'BUS Studio'
+}, { immediate: true })
 
 onMounted(() => {
   const workspaceId = typeof route.query.workspace === 'string' ? route.query.workspace : null
