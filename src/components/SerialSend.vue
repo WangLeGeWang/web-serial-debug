@@ -197,7 +197,7 @@ const handleKeyDown = (e: KeyboardEvent) => {
         v-model="sendConfig.content"
         type="textarea"
         :rows="5"
-        :placeholder="sendConfig.isHexSend ? '请输入HEX格式数据，如：AA BB CC 11 22' : '请输入要发送的文本'"
+        :placeholder="sendConfig.isHexSend ? '输入HEX格式数据，如：AA BB CC 11 22' : '输入要发送的文本'"
         @keydown="handleKeyDown"
       />
     </div>
@@ -248,19 +248,17 @@ const handleKeyDown = (e: KeyboardEvent) => {
 
 .quick-floating-bar {
   position: absolute;
-  top: 6px;
+  top: 8px;
   right: 10px;
   left: 10px;
   z-index: 2;
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 4px;
-  border: 1px solid var(--el-border-color-lighter);
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--el-bg-color-overlay) 84%, transparent);
-  box-shadow: var(--el-box-shadow-lighter);
-  backdrop-filter: blur(10px);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .quick-scroll-list {
@@ -284,12 +282,13 @@ const handleKeyDown = (e: KeyboardEvent) => {
 
 .quick-send-chip {
   flex: 0 0 auto;
-  height: 26px;
-  padding: 0 9px;
-  border: 1px solid transparent;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--el-border-color-lighter);
   border-radius: 7px;
-  background: transparent;
+  background: color-mix(in srgb, var(--el-bg-color-overlay) 88%, transparent);
   color: var(--el-text-color-regular);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--el-border-color) 28%, transparent);
 }
 
 .quick-send-chip:hover {
@@ -300,13 +299,14 @@ const handleKeyDown = (e: KeyboardEvent) => {
 
 .quick-settings-button {
   flex: 0 0 auto;
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   padding: 0;
-  border: 1px solid transparent;
+  border: 1px solid var(--el-border-color-lighter);
   border-radius: 7px;
-  background: transparent;
+  background: color-mix(in srgb, var(--el-bg-color-overlay) 88%, transparent);
   color: var(--el-text-color-regular);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--el-border-color) 28%, transparent);
 }
 
 .quick-settings-button:hover {
@@ -335,6 +335,14 @@ const handleKeyDown = (e: KeyboardEvent) => {
 
 .send-content {
   min-width: 0;
+}
+
+.send-content :deep(.el-textarea__inner) {
+  box-shadow: 0 0 0 1px var(--el-border-color-lighter) inset;
+}
+
+.send-content :deep(.el-textarea__inner:focus) {
+  box-shadow: 0 0 0 1px var(--el-color-primary) inset;
 }
 
 .newline-control {

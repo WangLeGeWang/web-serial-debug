@@ -302,7 +302,7 @@ const exportLog = () => {
   overflow: hidden;
 }
 
-#terminal {
+#terminal, :deep(.terminal) {
   height: 100%;
 }
 

@@ -18,6 +18,7 @@ import SerialSend from './SerialSend.vue'
 }
 .serial-term {
   flex: 1;
+  border-bottom: 1px solid var(--el-border-color-light);
 }
 
 </style>
