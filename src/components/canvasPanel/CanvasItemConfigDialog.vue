@@ -8,6 +8,7 @@ interface Props {
     id: number
     type: string
     title: string
+    titleHidden?: boolean
     config?: Record<string, any>
   } | null
 }
@@ -200,6 +201,10 @@ const handleSave = () => {
 
       <el-form-item label="标题">
         <el-input v-model="localItem.title" placeholder="请输入标题" />
+      </el-form-item>
+
+      <el-form-item label="隐藏标题">
+        <el-switch v-model="localItem.titleHidden" />
       </el-form-item>
 
       <el-divider>组件配置</el-divider>

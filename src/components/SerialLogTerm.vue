@@ -96,8 +96,8 @@ const initTerminal = () => {
  | |_) | |__| |____) |    | | (_) | (_) | |
  |____/ \\____/|_____/     |_|\\___/ \\___/|_|
 \x1b[0m
-\x1b[35m === BUS Tool ===\x1b[0m
-\x1b[32m 版本: v3.1.0\x1b[0m
+\x1b[35m === BUS Studio ===\x1b[0m
+\x1b[32m 版本: v4.1.0\x1b[0m
 
 `
     terminal.write(logo)

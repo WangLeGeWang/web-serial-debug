@@ -11,6 +11,8 @@ export interface CanvasItem {
   i: string
   title?: string
   resizable?: boolean
+  titleHidden?: boolean
+  config?: Record<string, any>
 }
 
 export interface Dashboard {
@@ -19,20 +21,26 @@ export interface Dashboard {
   items: CanvasItem[]
 }
 
+const createDefaultDashboard = (): Dashboard => ({
+  id: 'default',
+  name: '默认看板',
+  items: []
+})
+
 export const useDashboardStore = defineStore('dashboard', () => {
-  const dashboards = ref<Dashboard[]>([
-    {
-      id: 'default',
-      name: '默认看板',
-      items: []
-    }
-  ])
+  const dashboards = ref<Dashboard[]>([createDefaultDashboard()])
 
   const activeDashboardId = ref('default')
 
   const activeDashboard = computed(() => {
     return dashboards.value.find(d => d.id === activeDashboardId.value) || dashboards.value[0]
   })
+
+  const setDashboards = (nextDashboards: Dashboard[], nextActiveDashboardId?: string) => {
+    dashboards.value = nextDashboards.length > 0 ? nextDashboards : [createDefaultDashboard()]
+    const activeExists = nextActiveDashboardId && dashboards.value.some(d => d.id === nextActiveDashboardId)
+    activeDashboardId.value = activeExists ? nextActiveDashboardId : dashboards.value[0].id
+  }
 
   const addDashboard = (name: string) => {
     const id = `dashboard-${Date.now()}`
@@ -82,6 +90,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
     dashboards,
     activeDashboardId,
     activeDashboard,
+    setDashboards,
     addDashboard,
     removeDashboard,
     setActiveDashboard,

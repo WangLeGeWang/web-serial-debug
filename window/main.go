@@ -76,7 +76,7 @@ func main() {
 	defer w.Destroy()
 
 	// 设置窗口标题和大小
-	w.SetTitle("BUS Tool")
+	w.SetTitle("BUS Studio")
 	w.SetSize(1024, 768, webview.HintNone)
 
 	// 创建bridge实例，传入数据库配置

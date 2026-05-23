@@ -29,3 +29,6 @@ window/window
 # Worktrees
 .worktrees
 worktrees
+
+.trae
+.vscode

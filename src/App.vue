@@ -88,7 +88,7 @@ handleResize()
     <el-header class="app-header">
       <div class="header-content">
         <div class="header-left">
-          <h1><a href="https://github.com/qdsang/web-serial-debug" target="_blank">Web Serial</a></h1>
+          <h1><a href="https://github.com/qdsang/web-serial-debug" target="_blank">Bus</a></h1>
           <WorkspaceSelector class="header-workspace-selector" />
         </div>
         <div class="header-links">
