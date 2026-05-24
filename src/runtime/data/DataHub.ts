@@ -29,6 +29,10 @@ export class DataHub {
     this.currentWorkspaceNamespace = ns
   }
 
+  getCurrentWorkspaceNamespace(): string | null {
+    return this.currentWorkspaceNamespace
+  }
+
   private getOrCreate(namespace: string): NamespaceStore {
     let s = this.namespaces.get(namespace)
     if (!s) {
@@ -68,7 +72,7 @@ export class DataHub {
     this.getOrCreate(frame.namespace).apply(frame)
 
     for (const sub of this.subscribers) {
-      if (sub.query.namespace === frame.namespace) sub.cb(frame)
+      if ((sub.query.namespace as any) === '*' || sub.query.namespace === frame.namespace) sub.cb(frame)
     }
 
     // 兼容旧 EventCenter 订阅者：仅当 frame.namespace === currentWorkspaceNamespace 时
@@ -82,6 +86,24 @@ export class DataHub {
     const sub: Subscriber = { query, cb }
     this.subscribers.add(sub)
     return () => { this.subscribers.delete(sub) }
+  }
+
+  subscribeAll(cb: (frame: DataFrame) => void): () => void {
+    const sub: Subscriber = { query: { namespace: '*' } as any, cb }
+    this.subscribers.add(sub)
+    return () => { this.subscribers.delete(sub) }
+  }
+
+  /**
+   * 订阅 currentWorkspaceNamespace 的帧。当 currentWorkspaceNamespace 在订阅期间
+   * 发生变化时，回调会自动只收到新 ns 的帧（不需要 resubscribe）。
+   */
+  subscribeCurrent(cb: (frame: DataFrame) => void): () => void {
+    return this.subscribeAll((frame) => {
+      if (this.currentWorkspaceNamespace && frame.namespace === this.currentWorkspaceNamespace) {
+        cb(frame)
+      }
+    })
   }
 
   getLatest(query: DataQuery): Record<string, any> {

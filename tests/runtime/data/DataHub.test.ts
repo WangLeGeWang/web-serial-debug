@@ -93,4 +93,50 @@ describe('DataHub basic', () => {
     old.append({ namespace: 'ns', timestamp: 2, values: { a: 2 } })
     expect(cb).toHaveBeenCalledOnce()
   })
+
+  it('getCurrentWorkspaceNamespace 反映 setter 设置', () => {
+    expect(hub.getCurrentWorkspaceNamespace()).toBeNull()
+    hub.setCurrentWorkspaceNamespace('ns-a')
+    expect(hub.getCurrentWorkspaceNamespace()).toBe('ns-a')
+    hub.setCurrentWorkspaceNamespace(null)
+    expect(hub.getCurrentWorkspaceNamespace()).toBeNull()
+  })
+
+  it('subscribeAll 接收所有 namespace 的帧', () => {
+    const cb = vi.fn()
+    const off = hub.subscribeAll(cb)
+    hub.append({ namespace: 'ns-a', timestamp: 1, values: { a: 1 } })
+    hub.append({ namespace: 'ns-b', timestamp: 2, values: { b: 2 } })
+    expect(cb).toHaveBeenCalledTimes(2)
+    off()
+    hub.append({ namespace: 'ns-a', timestamp: 3, values: { a: 3 } })
+    expect(cb).toHaveBeenCalledTimes(2)
+  })
+
+  it('subscribeCurrent 只收 currentWorkspaceNamespace 的帧，切换后自动跟随新 ns', () => {
+    const cb = vi.fn()
+    const off = hub.subscribeCurrent(cb)
+
+    // 未设置 currentWorkspaceNamespace 时不触发
+    hub.append({ namespace: 'ns-a', timestamp: 1, values: { a: 1 } })
+    expect(cb).not.toHaveBeenCalled()
+
+    // 设为 ns-a：只触发 ns-a
+    hub.setCurrentWorkspaceNamespace('ns-a')
+    hub.append({ namespace: 'ns-a', timestamp: 2, values: { a: 2 } })
+    hub.append({ namespace: 'ns-b', timestamp: 3, values: { b: 3 } })
+    expect(cb).toHaveBeenCalledTimes(1)
+    expect(cb).toHaveBeenLastCalledWith(expect.objectContaining({ namespace: 'ns-a', values: { a: 2 } }))
+
+    // 切换到 ns-b：自动只跟随 ns-b，不需要重订
+    hub.setCurrentWorkspaceNamespace('ns-b')
+    hub.append({ namespace: 'ns-a', timestamp: 4, values: { a: 4 } })
+    hub.append({ namespace: 'ns-b', timestamp: 5, values: { b: 5 } })
+    expect(cb).toHaveBeenCalledTimes(2)
+    expect(cb).toHaveBeenLastCalledWith(expect.objectContaining({ namespace: 'ns-b', values: { b: 5 } }))
+
+    off()
+    hub.append({ namespace: 'ns-b', timestamp: 6, values: { b: 6 } })
+    expect(cb).toHaveBeenCalledTimes(2)
+  })
 })
