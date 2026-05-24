@@ -1,11 +1,27 @@
 import { NamespaceStore } from './NamespaceStore'
 import { EventCenter, EventNames } from '@/utils/EventCenter'
 import type {
-  DataFrame, DataQuery, DataPoint, NamespaceOrigin, HistoryQuery
+  DataFrame, DataQuery, DataPoint, NamespaceOrigin, HistoryQuery, RecordingId
 } from './types'
 import type { HubTransport } from '@/runtime/transport/HubTransport'
-import { dataSeriesStorage } from '@/utils/DataSeriesStorage'
+import { dataSeriesStorage, type DataSeries } from '@/utils/DataSeriesStorage'
 import { lttb } from '@/utils/lttb'
+
+interface RecordingState {
+  id: RecordingId
+  namespace: string
+  name: string
+  startTime: number
+  pointCount: number
+  fields: Set<string>
+  chunkIndex: number
+  buf: DataPoint[]
+  firstTimestamp: number | null
+  lastTimestamp: number
+  pendingChunks: Promise<void>[]
+}
+
+const CHUNK_SIZE = 10000
 
 export interface DataHubOptions {
   origin: string
@@ -24,6 +40,7 @@ export class DataHub {
   private readonly namespaceOrigin = new Map<string, NamespaceOrigin>()
   private readonly transports = new Set<HubTransport>()
   private readonly transportById = new Map<string, HubTransport>()
+  private readonly recordings = new Map<RecordingId, RecordingState>()
 
   constructor(opts: DataHubOptions) {
     this.origin = opts.origin
@@ -75,6 +92,31 @@ export class DataHub {
     }
 
     this.getOrCreate(frame.namespace).apply(frame)
+
+    for (const r of this.recordings.values()) {
+      if (r.namespace !== frame.namespace) continue
+      const numeric: Record<string, number> = {}
+      for (const [k, v] of Object.entries(frame.values)) {
+        if (typeof v === 'number') {
+          numeric[k] = v
+          r.fields.add(k)
+        }
+      }
+      if (Object.keys(numeric).length === 0) continue
+      r.buf.push({ timestamp: frame.timestamp, values: numeric })
+      r.pointCount++
+      if (r.firstTimestamp === null) r.firstTimestamp = frame.timestamp
+      r.lastTimestamp = frame.timestamp
+      if (r.buf.length >= CHUNK_SIZE) {
+        const chunk = { seriesId: r.id, chunkIndex: r.chunkIndex++, points: r.buf }
+        r.buf = []
+        r.pendingChunks.push(
+          dataSeriesStorage.saveChunk(chunk).catch(err => {
+            console.error('[DataHub] saveChunk failed', err)
+          })
+        )
+      }
+    }
 
     if (source === 'local') {
       for (const t of this.transports) {
@@ -134,6 +176,45 @@ export class DataHub {
     return s.buffer.windowByTime(windowMs)
   }
 
+  startRecording(namespace: string, name = 'untitled'): RecordingId {
+    const id = 'rec-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6)
+    this.recordings.set(id, {
+      id, namespace, name, startTime: Date.now(),
+      pointCount: 0, fields: new Set(), chunkIndex: 0, buf: [],
+      firstTimestamp: null, lastTimestamp: 0, pendingChunks: []
+    })
+    return id
+  }
+
+  async stopRecording(id: RecordingId): Promise<DataSeries> {
+    const r = this.recordings.get(id)
+    if (!r) throw new Error('recording not found: ' + id)
+    this.recordings.delete(id)
+    await Promise.all(r.pendingChunks)
+    if (r.buf.length > 0) {
+      await dataSeriesStorage.saveChunk({
+        seriesId: r.id, chunkIndex: r.chunkIndex, points: r.buf
+      })
+    }
+    const series: DataSeries = {
+      id: r.id,
+      namespace: r.namespace,
+      name: r.name,
+      startTime: r.firstTimestamp ?? r.startTime,
+      endTime: r.lastTimestamp || (r.firstTimestamp ?? r.startTime),
+      pointCount: r.pointCount,
+      fields: Array.from(r.fields),
+      createdAt: r.startTime,
+      sizeBytes: 0
+    }
+    await dataSeriesStorage.saveSeries(series)
+    return series
+  }
+
+  async listSeries(namespace?: string): Promise<DataSeries[]> {
+    return dataSeriesStorage.listSeries(namespace)
+  }
+
   async queryHistory(query: HistoryQuery): Promise<DataPoint[]> {
     if (query.timeRange[0] > query.timeRange[1]) {
       throw new Error(`[DataHub.queryHistory] invalid timeRange: start ${query.timeRange[0]} > end ${query.timeRange[1]}`)
@@ -179,6 +260,7 @@ export class DataHub {
     this.namespaceOrigin.clear()
     this.transports.clear()
     this.transportById.clear()
+    this.recordings.clear()
   }
 }
 
