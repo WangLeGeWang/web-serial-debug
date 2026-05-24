@@ -7,10 +7,9 @@ import CanvasWidgetWrapper from './CanvasWidgetWrapper.vue'
 import CanvasItemConfigDialog from './CanvasItemConfigDialog.vue'
 import { useDark } from '@vueuse/core'
 import { GridLayout, GridItem } from 'grid-layout-plus'
-import { realtimeProvider } from '@/utils/RealtimeProvider'
 import { useDashboardStore, type Dashboard } from '@/store/dashboardStore'
-import { EventCenter, EventNames } from '@/utils/EventCenter'
 import { ProfileManagerInst } from '@/utils/ProfileManager'
+import { bindRealtimeProviderToDataHub } from './realtimeBinding'
 import type { CanvasConfig } from '../types'
 
 const showManager = ref(false)
@@ -18,7 +17,6 @@ const playbackControlRef = ref<{ selectSeries: (seriesId: string) => Promise<voi
 
 const profileManager = ProfileManagerInst
 const dashboardStore = useDashboardStore()
-const eventCenter = EventCenter.getInstance()
 const isDark = useDark()
 const canvasMode = ref<'view' | 'edit'>('view')
 
@@ -314,17 +312,6 @@ const saveItemConfig = (updatedItem: any) => {
   }
 }
 
-const handleDataUpdate = (data: any) => {
-  const timestamp = Date.now()
-  const values: Record<string, number> = {}
-  Object.entries(data).forEach(([key, value]) => {
-    if (typeof value === 'number') {
-      values[key] = value
-    }
-  })
-  realtimeProvider.addDataPoint(timestamp, values)
-}
-
 watch(() => profileManager.activeProfile, () => {
   loadDashboardsFromProfile()
 })
@@ -339,13 +326,18 @@ watch(() => dashboardStore.dashboards, () => {
   persistDashboardsToProfile()
 }, { deep: true })
 
+let unbindRealtime: (() => void) | null = null
+
 onMounted(() => {
   loadDashboardsFromProfile()
-  eventCenter.on(EventNames.DATA_UPDATE, handleDataUpdate)
+  unbindRealtime = bindRealtimeProviderToDataHub()
 })
 
 onUnmounted(() => {
-  eventCenter.off(EventNames.DATA_UPDATE, handleDataUpdate)
+  if (unbindRealtime) {
+    unbindRealtime()
+    unbindRealtime = null
+  }
 })
 </script>
 
