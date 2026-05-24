@@ -44,6 +44,28 @@ Bus Studio 串口监听和调试， 支持 UART、蓝牙、websocket、stlink等
 - `sendHex(hex)` - 发送HEX格式数据
 - `sleep(ms)` - 延时指定毫秒数
 
+## 架构亮点
+
+### DataHub 数据中枢
+
+所有数据流转通过 `DataHub` 单例。脚本 `updateDataTable(values)` 实际写入当前工作区的 namespace；可视化层通过 `useDataSource` composable 订阅，自动切换 realtime / history / playback 三种模式。
+
+### 多 Tab 数据互通
+
+基于 `BroadcastChannel` 实现的 `HubTransport`，让多个浏览器 Tab 选择**相同 namespace** 时自动同步数据：
+
+- Tab A 接设备产数据 → Tab B 同 namespace 的图表实时更新
+- 通过 frame.origin 防回环
+- 每个 Tab 进程独立，互不阻塞
+
+### 历史数据存储
+
+`DataSeriesStorage` 基于 IndexedDB，按 namespace 索引：
+
+- `DataHub.startRecording(namespace, name)` → `stopRecording(id)` 持久化录制
+- 按 chunk（10000 点/批）存储，避免大数据集阻塞主线程
+- `DataHub.queryHistory({ namespace, timeRange, maxPoints })` 支持 LTTB 抽稀
+
 ## 开发环境要求
 
 - Node.js >= 18.0.0

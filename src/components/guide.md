@@ -34,6 +34,39 @@ graph LR
 | 🔧 脚本引擎 | 用户编写 JavaScript 代码的区域，包含 `DataReceiver`、`DataSender`、`updateDataTable` |
 | 📺 显示与发送 | 数据展示区域（数据表、图表、终端日志）和用户发送控制 |
 
+## 新架构：DataHub 数据中枢
+
+为了支持 **多页面 / 多窗口数据互通** 与 **多工作区命名空间隔离**，数据流转底层经过 DataHub 单例中转。
+
+```mermaid
+graph TB
+    Script[⚙️ updateDataTable] -->|append| Hub[🌐 DataHub]
+    Hub -->|分发| NS[(📦 NamespaceStore<br/>fields + RealtimeBuffer)]
+    Hub -->|广播| BC[📡 BroadcastChannel<br/>多 Tab 互通]
+    Hub -->|订阅| DS[useDataSource<br/>realtime / history / playback]
+    DS -->|render| W[📊 各可视化 Widget]
+    Hub -->|queryHistory| Store[(💾 IndexedDB<br/>DataSeries 按 namespace 索引)]
+    Hub -.->|legacy emit| EC[📢 EventCenter<br/>旧组件兼容]
+```
+
+### 关键概念
+
+| 概念 | 说明 |
+|------|------|
+| **namespace** | 每个工作区都有独立 namespace（默认 = workspace.id），用于隔离不同设备/项目的数据 |
+| **DataHub.append** | 所有数据入口；本地 frame 自动补 origin/seq，跨 Tab/远端 frame 标 source=remote 防回环 |
+| **useDataSource** | Vue composable，按 mode 自动切换 realtime / history / playback 数据源 |
+| **HubTransport** | 传输抽象；当前实现 BroadcastChannelTransport（浏览器多 Tab） |
+| **DataSeriesStorage** | IndexedDB 持久化历史 series，按 namespace 索引，支持 LTTB 抽稀 |
+
+### 多 Tab 数据互通
+
+打开多个浏览器 Tab，**选择相同的命名空间（namespace）**，数据将自动通过 BroadcastChannel 同步：
+
+- Tab A 接设备产数据 → 自动广播到 Tab B 同 namespace 的 Widget
+- 单条 frame 在每个 Tab 最多展示一次（origin 防回环）
+- 关闭某个 Tab 不影响其他 Tab
+
 ### 1. 数据采集
 
 设备（串口/USB/蓝牙等）采集数据，通过串口通信将原始数据传输到应用程序。
