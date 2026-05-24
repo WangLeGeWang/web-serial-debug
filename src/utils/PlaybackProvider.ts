@@ -4,7 +4,6 @@ import { dataSeriesStorage } from './DataSeriesStorage'
 import type { DataSeries } from './DataSeriesStorage'
 
 const CHUNK_SIZE = 10000
-const PREFETCH_THRESHOLD = 0.2
 
 export interface PlaybackProviderOptions {
   seriesData?: DataPoint[]
@@ -16,43 +15,12 @@ export interface PlaybackProviderOptions {
 }
 
 export function createPlaybackProvider(options: PlaybackProviderOptions): DataSourceProvider {
-  const { seriesData = [], seriesId, fields, startTime, endTime, windowDuration = 30000 } = options
+  const { seriesData = [], fields, startTime, endTime, windowDuration = 30000 } = options
   const currentTime = ref(startTime)
+  const timeWindow = ref(windowDuration)
   const allData = ref<DataPoint[]>(seriesData)
-  const loadedChunks = ref<Map<number, DataPoint[]>>(new Map())
-  const isLoading = ref(false)
-
-  async function loadChunk(chunkIndex: number): Promise<DataPoint[]> {
-    if (loadedChunks.value.has(chunkIndex)) {
-      return loadedChunks.value.get(chunkIndex)!
-    }
-    if (!seriesId) return []
-
-    isLoading.value = true
-    try {
-      const points = await dataSeriesStorage.loadChunk(seriesId, chunkIndex)
-      loadedChunks.value.set(chunkIndex, points)
-      return points
-    } finally {
-      isLoading.value = false
-    }
-  }
-
-  async function ensureChunksForTime(time: number): Promise<void> {
-    if (!seriesId || allData.value.length > 0) return
-
-    const totalChunks = Math.ceil((endTime - startTime) / CHUNK_SIZE / (endTime - startTime) * 10000) || 1
-    const currentChunk = Math.floor((time - startTime) / CHUNK_SIZE)
-
-    await Promise.all([
-      loadChunk(currentChunk),
-      currentChunk > 0 ? loadChunk(currentChunk - 1) : Promise.resolve([]),
-      currentChunk < totalChunks - 1 ? loadChunk(currentChunk + 1) : Promise.resolve([])
-    ])
-  }
-
   const timeRange = computed(() => {
-    return [currentTime.value - windowDuration, currentTime.value] as [number, number]
+    return [currentTime.value - timeWindow.value, currentTime.value] as [number, number]
   })
 
   const visibleData = computed(() => {
@@ -69,7 +37,13 @@ export function createPlaybackProvider(options: PlaybackProviderOptions): DataSo
     get visibleData() { return visibleData.value },
     get fields() { return fields },
     get timeRange() { return timeRange.value },
-    get mode() { return 'playback' }
+    get mode() { return 'playback' as const },
+    setCurrentTime(time: number) {
+      currentTime.value = Math.min(Math.max(time, startTime), endTime)
+    },
+    setWindowDuration(duration: number) {
+      timeWindow.value = duration
+    }
   }
 
   return provider
@@ -77,9 +51,10 @@ export function createPlaybackProvider(options: PlaybackProviderOptions): DataSo
 
 export async function createPlaybackProviderFromSeries(
   series: DataSeries,
-  windowDuration: number = 30000
+  windowDuration: number = 10000
 ): Promise<DataSourceProvider> {
   const currentTime = ref(series.startTime)
+  const timeWindow = ref(windowDuration)
   const loadedChunks = new Map<number, DataPoint[]>()
   const allData: DataPoint[] = []
 
@@ -95,7 +70,7 @@ export async function createPlaybackProviderFromSeries(
   }
 
   const timeRange = computed(() => {
-    return [currentTime.value - windowDuration, currentTime.value] as [number, number]
+    return [currentTime.value - timeWindow.value, currentTime.value] as [number, number]
   })
 
   const visibleData = computed(() => {
@@ -118,12 +93,20 @@ export async function createPlaybackProviderFromSeries(
     }
   }, { immediate: true })
 
-  return {
+  const provider: DataSourceProvider = {
     get visibleData() { return visibleData.value },
     get fields() { return series.fields },
     get timeRange() { return timeRange.value },
-    get mode() { return 'playback' }
+    get mode() { return 'playback' as const },
+    setCurrentTime(time: number) {
+      currentTime.value = Math.min(Math.max(time, series.startTime), series.endTime)
+    },
+    setWindowDuration(duration: number) {
+      timeWindow.value = duration
+    }
   }
+
+  return provider
 }
 
 export const playbackProvider = {

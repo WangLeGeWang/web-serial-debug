@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useDark } from '@vueuse/core'
-import { realtimeProvider } from '../../utils/RealtimeProvider'
-import type { DataPoint } from '../../utils/DataSourceProvider'
+import { useDataSource, type DataPoint } from '../../utils/DataSourceProvider'
 import { echarts, type ECharts, type EChartsOption, type LineSeriesOption } from './echartsCore'
 import { createBaseOption, getTheme } from './chartTheme'
 
@@ -31,6 +30,7 @@ const props = withDefaults(defineProps<Props>(), {
 const chartEl = ref<HTMLElement | null>(null)
 const chart = ref<ECharts | null>(null)
 const isDark = useDark()
+const dataSource = useDataSource()
 let resizeObserver: ResizeObserver | null = null
 let refreshTimer: number | null = null
 
@@ -38,11 +38,11 @@ const theme = computed(() => getTheme(isDark.value))
 
 const chartFields = computed(() => {
   if (props.fields.length > 0) return props.fields
-  return realtimeProvider.fields.value
+  return dataSource.fields
 })
 
 const visiblePoints = computed<DataPoint[]>(() => {
-  const points = realtimeProvider.dataPoints.value as DataPoint[]
+  const points = dataSource.visibleData
   const maxPoints = Number(props.maxPoints) || 10000
   if (points.length <= maxPoints) return points
   return points.slice(-maxPoints)
@@ -181,7 +181,7 @@ const resizeChart = () => {
   chart.value?.resize()
 }
 
-watch(() => realtimeProvider.dataPoints.value.length, scheduleRender)
+watch(() => [dataSource.mode, dataSource.timeRange, dataSource.fields, dataSource.visibleData.length], scheduleRender, { deep: true })
 watch(() => [props.fields, props.maxPoints, props.sampling, props.showArea, props.showSymbol, props.smooth, props.lineWidth], renderChart, { deep: true })
 watch(isDark, renderChart)
 

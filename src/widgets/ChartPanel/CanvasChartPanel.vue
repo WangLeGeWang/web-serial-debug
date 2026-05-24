@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed, watch, onMounted, onUnmounted, ref } from 'vue'
+import { computed, watch, ref } from 'vue'
 import LineChart from './LineChart.vue'
-import { realtimeProvider } from '@/utils/RealtimeProvider'
+import { useDataSource } from '../../utils/DataSourceProvider'
 
 interface Props {
   fields?: string[]
@@ -11,15 +11,17 @@ const props = withDefaults(defineProps<Props>(), {
   fields: () => []
 })
 
+const dataSource = useDataSource()
+
 const chartFields = computed(() => {
-  const points = realtimeProvider.dataPoints.value
+  const points = dataSource.visibleData
   if (points.length === 0) return []
   if (props.fields.length > 0) return props.fields
   return Object.keys(points[0]?.values || {})
 })
 
 const chartData = computed((): number[][] => {
-  const points = realtimeProvider.dataPoints.value
+  const points = dataSource.visibleData
   if (points.length === 0) {
     return [[0], [0]]
   }
@@ -40,9 +42,9 @@ watch(() => props.fields, () => {
   key.value++
 })
 
-watch(() => realtimeProvider.dataPoints.value.length, () => {
+watch(() => [dataSource.mode, dataSource.timeRange, dataSource.fields, dataSource.visibleData.length], () => {
   key.value++
-})
+}, { deep: true })
 </script>
 
 <template>

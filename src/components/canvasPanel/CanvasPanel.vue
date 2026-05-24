@@ -14,6 +14,7 @@ import { ProfileManagerInst } from '@/utils/ProfileManager'
 import type { CanvasConfig } from '../types'
 
 const showManager = ref(false)
+const playbackControlRef = ref<{ selectSeries: (seriesId: string) => Promise<void> } | null>(null)
 
 const profileManager = ProfileManagerInst
 const dashboardStore = useDashboardStore()
@@ -115,7 +116,7 @@ const componentConfigs = {
   },
   'row': {
     width: 24,
-    height: 1,
+    height: 0.6,
     resizable: false,
     title: '行'
   }
@@ -139,7 +140,9 @@ const loadItemFromConfig = (item: any): CanvasItem => {
   const x = typeof item.x === 'number' ? Math.floor(item.x / 50) : 0
   const y = typeof item.y === 'number' ? Math.floor(item.y / 50) : 0
   const w = typeof item.width === 'number' ? Math.ceil(item.width / 50) : 4
-  const h = typeof item.height === 'number' ? Math.ceil(item.height / 50) : 4
+  const h = item.type === 'row'
+    ? componentConfigs.row.height
+    : typeof item.height === 'number' ? Math.ceil(item.height / 50) : 4
 
   return {
     id: item.id,
@@ -212,6 +215,11 @@ const persistDashboardsToProfile = () => {
 const syncItemsFromActiveDashboard = () => {
   items.value = cloneItems(dashboardStore.activeDashboard?.items || [])
   nextTick(handleResize)
+}
+
+const handleDataSeriesPlayback = async (seriesId: string) => {
+  await playbackControlRef.value?.selectSeries(seriesId)
+  showManager.value = false
 }
 
 const loadDashboardsFromProfile = () => {
@@ -357,6 +365,7 @@ onUnmounted(() => {
         </el-button-group>
       </div>
       <div class="toolbar-right">
+        <PlaybackControl ref="playbackControlRef" @open-manager="showManager = true" />
         <el-radio-group v-model="canvasMode" size="small">
           <el-radio-button label="view">查看</el-radio-button>
           <el-radio-button label="edit">编辑</el-radio-button>
@@ -422,12 +431,11 @@ onUnmounted(() => {
               </template>
             </el-dropdown>
           </div>
-          <div class="item-content">
+          <div v-if="item.type !== 'row'" class="item-content">
             <CanvasWidgetWrapper :type="item.type" :config="item.config" />
           </div>
         </grid-item>
       </grid-layout>
-      <PlaybackControl @open-manager="showManager = true" />
     </div>
 
     <CanvasItemConfigDialog
@@ -436,7 +444,11 @@ onUnmounted(() => {
       @save="saveItemConfig"
     />
 
-    <DataSeriesManager @close="showManager = false" />
+    <DataSeriesManager
+      :visible="showManager"
+      @close="showManager = false"
+      @playback="handleDataSeriesPlayback"
+    />
   </div>
 </template>
 
@@ -446,27 +458,31 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   background: var(--el-bg-color);
-  padding-bottom: 140px;
 }
 
 .toolbar {
-  padding: 12px;
+  padding: 10px 12px;
   border-bottom: 1px solid var(--el-border-color);
   background: var(--el-bg-color-overlay);
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .toolbar-left {
   flex: 1;
+  min-width: 320px;
 }
 
 .toolbar-right {
-  flex-shrink: 0;
+  flex: 0 1 auto;
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
 .tool-group {
@@ -531,6 +547,11 @@ onUnmounted(() => {
   height: 30px;
   border-bottom: 1px solid rgba(148, 163, 184, 0.12);
   transition: background-color .1s ease-in-out, opacity .1s ease-in-out;
+}
+
+.row-item .item-header {
+  border-bottom: 0;
+  border-radius: 2px;
 }
 
 .view-mode .item-header {

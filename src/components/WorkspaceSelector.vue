@@ -853,10 +853,10 @@ const testWorkspaceDevice = async () => {
   gap: 8px;
   min-width: 158px;
   height: 36px;
-  padding: 1px 10px;
+  padding: 1px 8px;
   background: var(--el-fill-color-light);
   border: 1px solid transparent;
-  border-radius: 7px;
+  border-radius: 5px;
   cursor: pointer;
   font-size: 14px;
   transition: background 0.2s, border-color 0.2s;

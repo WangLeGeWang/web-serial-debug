@@ -615,6 +615,9 @@ onUnmounted(() => {
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
+  .el-button {
+    margin-left: 0;
+  }
 }
 
 :deep(.dark) {

@@ -1,4 +1,4 @@
-import { ref, onUnmounted } from 'vue'
+import { ref } from 'vue'
 
 export type PlaybackSpeed = 0.1 | 0.5 | 1 | 2 | 5 | 10
 export type PlaybackDirection = 1 | -1
@@ -23,15 +23,13 @@ export class PlaybackController {
 
   private startTime: number
   private endTime: number
-  private windowDuration: number
   private onTick?: (currentTime: number) => void
 
   constructor(options: PlaybackControllerOptions) {
     this.startTime = options.startTime
     this.endTime = options.endTime
-    this.windowDuration = options.windowDuration || 30000
     this.onTick = options.onTick
-    this.currentTime.value = startTime
+    this.currentTime.value = this.startTime
   }
 
   play(): void {
