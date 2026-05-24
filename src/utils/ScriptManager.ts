@@ -102,18 +102,23 @@ export class ScriptManager {
   }
 
   public updateDataTable(values: Record<string, any>): void {
+    if (!values || typeof values !== 'object') return
+
+    let hub
     try {
-      const hub = getDataHub()
-      const namespace = this.namespaceProvider() || 'default'
-      hub.append({
-        namespace,
-        timestamp: Date.now(),
-        values
-      })
+      hub = getDataHub()
     } catch (err) {
-      console.warn('[ScriptManager] updateDataTable fallback to EventCenter:', err)
+      console.warn('[ScriptManager] DataHub not init, fallback to EventCenter', err)
       eventCenter.emit(EventNames.DATA_UPDATE, values)
+      return
     }
+
+    const namespace = this.namespaceProvider() || 'default'
+    hub.append({
+      namespace,
+      timestamp: Date.now(),
+      values
+    })
   }
 
   public getScript(): Script {
@@ -149,6 +154,7 @@ export class ScriptManager {
           eventCenter.emit(EventNames.SERIAL_SEND, data)
         },
         updateDataTable: (data: any) => {
+          // 用箭头函数代理而非直接传 this.updateDataTable，避免脚本运行时丢失 this 上下文
           this.updateDataTable(data)
         },
         getDataTables: () => {

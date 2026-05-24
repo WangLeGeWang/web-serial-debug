@@ -34,7 +34,7 @@ describe('ScriptManager updateDataTable 接入 DataHub', () => {
     expect(latest.a).toBe(42)
   })
 
-  it('DataHub.append 抛错时 fallback 到 EventCenter emit', () => {
+  it('DataHub.append 抛错时不再吞错，直接 rethrow（避免脏数据降级）', () => {
     const sm = ScriptManager.getInstance()
     sm.setNamespaceProvider(() => 'ns-fallback')
 
@@ -44,11 +44,43 @@ describe('ScriptManager updateDataTable 接入 DataHub', () => {
     })
     const emitSpy = vi.spyOn(EventCenter.getInstance(), 'emit')
 
-    const payload = { x: 7 }
-    sm.updateDataTable(payload)
-
+    expect(() => sm.updateDataTable({ x: 7 })).toThrow('boom')
     expect(appendSpy).toHaveBeenCalledOnce()
-    expect(emitSpy).toHaveBeenCalledWith(EventNames.DATA_UPDATE, payload)
+    expect(emitSpy).not.toHaveBeenCalled()
+
+    appendSpy.mockRestore()
+    emitSpy.mockRestore()
+  })
+
+  it('DataHub 真未 init 时 fallback 到 EventCenter', async () => {
+    const sm = ScriptManager.getInstance()
+
+    const dhMod = await import('@/runtime/data/DataHub')
+    const getHubSpy = vi.spyOn(dhMod, 'getDataHub').mockImplementation(() => {
+      throw new Error('DataHub not initialized. Call initDataHub() first.')
+    })
+    const emitSpy = vi.spyOn(EventCenter.getInstance(), 'emit')
+
+    sm.updateDataTable({ a: 1 })
+
+    expect(emitSpy).toHaveBeenCalledWith(EventNames.DATA_UPDATE, { a: 1 })
+
+    getHubSpy.mockRestore()
+    emitSpy.mockRestore()
+  })
+
+  it('入参非对象时直接返回，不写 hub 也不 emit', () => {
+    const sm = ScriptManager.getInstance()
+    const hub = getDataHub()
+    const appendSpy = vi.spyOn(hub, 'append')
+    const emitSpy = vi.spyOn(EventCenter.getInstance(), 'emit')
+
+    sm.updateDataTable(null as any)
+    sm.updateDataTable(undefined as any)
+    sm.updateDataTable('foo' as any)
+
+    expect(appendSpy).not.toHaveBeenCalled()
+    expect(emitSpy).not.toHaveBeenCalled()
 
     appendSpy.mockRestore()
     emitSpy.mockRestore()
