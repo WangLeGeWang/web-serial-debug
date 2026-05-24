@@ -18,7 +18,7 @@ export class DataHub {
   private currentWorkspaceNamespace: string | null = null
   private readonly namespaces = new Map<string, NamespaceStore>()
   private readonly subscribers = new Set<Subscriber>()
-  readonly namespaceOrigin = new Map<string, NamespaceOrigin>()
+  private readonly namespaceOrigin = new Map<string, NamespaceOrigin>()
 
   constructor(opts: DataHubOptions) {
     this.origin = opts.origin
@@ -71,6 +71,8 @@ export class DataHub {
       if (sub.query.namespace === frame.namespace) sub.cb(frame)
     }
 
+    // 兼容旧 EventCenter 订阅者：仅当 frame.namespace === currentWorkspaceNamespace 时
+    // emit 本帧的增量 values（不是累积快照）。新代码请走 DataHub.subscribe / getLatest。
     if (this.currentWorkspaceNamespace && frame.namespace === this.currentWorkspaceNamespace) {
       EventCenter.getInstance().emit(EventNames.DATA_UPDATE, frame.values)
     }
@@ -98,11 +100,26 @@ export class DataHub {
     if (!s) return []
     return s.buffer.windowByTime(windowMs)
   }
+
+  getNamespaceOrigin(ns: string): NamespaceOrigin | undefined {
+    return this.namespaceOrigin.get(ns)
+  }
+
+  listNamespaceOrigins(): ReadonlyMap<string, NamespaceOrigin> {
+    return new Map(this.namespaceOrigin)
+  }
+
+  dispose(): void {
+    this.subscribers.clear()
+    this.namespaces.clear()
+    this.namespaceOrigin.clear()
+  }
 }
 
 let _instance: DataHub | null = null
 
 export function initDataHub(opts: DataHubOptions): DataHub {
+  if (_instance) _instance.dispose()
   _instance = new DataHub(opts)
   return _instance
 }

@@ -1,6 +1,7 @@
 import { RealtimeBuffer } from './RealtimeBuffer'
-import type { DataFrame, FieldState, FieldDataType, DataPoint, RecordingId } from './types'
+import type { DataFrame, FieldState, FieldDataType, DataPoint } from './types'
 
+// 数组/普通对象统一归为 'object'；后续如需结构化展开再扩 FieldDataType。
 function detectType(v: unknown): FieldDataType {
   if (typeof v === 'number') return 'number'
   if (typeof v === 'string') return 'string'
@@ -11,7 +12,6 @@ function detectType(v: unknown): FieldDataType {
 export class NamespaceStore {
   readonly fields: Map<string, FieldState> = new Map()
   readonly buffer: RealtimeBuffer
-  recordingId: RecordingId | null = null
 
   constructor(readonly namespace: string, bufferCapacity: number) {
     this.buffer = new RealtimeBuffer(bufferCapacity)
@@ -53,6 +53,5 @@ export class NamespaceStore {
   clear(): void {
     this.fields.clear()
     this.buffer.clear()
-    this.recordingId = null
   }
 }

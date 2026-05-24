@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { DataHub } from '@/runtime/data/DataHub'
+import { DataHub, initDataHub, getDataHub } from '@/runtime/data/DataHub'
 import { EventCenter, EventNames } from '@/utils/EventCenter'
 
 describe('DataHub basic', () => {
@@ -77,5 +77,20 @@ describe('DataHub basic', () => {
       .toThrow(/namespace/)
     expect(() => hub.append({ namespace: 'ns', timestamp: 1, values: null as any }))
       .toThrow(/values/)
+  })
+
+  it('initDataHub 替换单例时清理旧实例', () => {
+    const old = initDataHub({ origin: 'old', bufferCapacity: 10 })
+    const cb = vi.fn()
+    old.subscribe({ namespace: 'ns' }, cb)
+    old.append({ namespace: 'ns', timestamp: 1, values: { a: 1 } })
+    expect(cb).toHaveBeenCalledOnce()
+
+    const fresh = initDataHub({ origin: 'new', bufferCapacity: 10 })
+    expect(fresh).not.toBe(old)
+    expect(getDataHub()).toBe(fresh)
+    // 旧实例 subscribers 已清空，再 append 不应触发旧 cb
+    old.append({ namespace: 'ns', timestamp: 2, values: { a: 2 } })
+    expect(cb).toHaveBeenCalledOnce()
   })
 })
