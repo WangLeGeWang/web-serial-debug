@@ -2,7 +2,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
-use serialport::{available_ports, DataBits, FlowControl, Parity, SerialPortType, StopBits};
+use serialport::{available_ports, DataBits, FlowControl, Parity, StopBits};
 use tauri::ipc::Channel;
 use tauri::State;
 
@@ -11,16 +11,31 @@ use crate::state::{AppState, SerialHandle};
 
 /// 列出可用串口。
 /// 与旧 Go 版本不同，这里直接走 `serialport` 跨平台 API，不再硬编码 COM1..256。
+/// 注意：保留 Unknown 类型，方便接入 socat/PTY 等虚拟串口用于本地联调。
 #[tauri::command]
 pub fn get_serial_ports() -> Vec<String> {
-    match available_ports() {
-        Ok(ports) => ports
-            .into_iter()
-            .filter(|p| !matches!(p.port_type, SerialPortType::Unknown))
-            .map(|p| p.port_name)
-            .collect(),
+    let mut ports: Vec<String> = match available_ports() {
+        Ok(list) => list.into_iter().map(|p| p.port_name).collect(),
         Err(_) => Vec::new(),
+    };
+
+    // macOS/Linux 下补充 /tmp/ttyV* 这类用户软链（socat 常用约定）。
+    #[cfg(unix)]
+    {
+        if let Ok(entries) = std::fs::read_dir("/tmp") {
+            for entry in entries.flatten() {
+                let name = entry.file_name();
+                let name_str = name.to_string_lossy();
+                if name_str.starts_with("ttyV") {
+                    ports.push(format!("/tmp/{}", name_str));
+                }
+            }
+        }
     }
+
+    ports.sort();
+    ports.dedup();
+    ports
 }
 
 #[derive(serde::Deserialize)]

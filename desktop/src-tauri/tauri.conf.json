@@ -4,9 +4,9 @@
   "version": "4.1.0",
   "identifier": "com.busstudio.app",
   "build": {
-    "beforeDevCommand": "npm --prefix ../.. run dev",
+    "beforeDevCommand": "npm --prefix .. run dev",
     "devUrl": "http://localhost:5173",
-    "beforeBuildCommand": "npm --prefix ../.. run build",
+    "beforeBuildCommand": "npm --prefix .. run build",
     "frontendDist": "../../dist"
   },
   "app": {
