@@ -1,4 +1,4 @@
-import type { DataPoint } from './DataSourceProvider'
+import type { DataPoint } from '@/runtime/data/types'
 import { getPlatform } from './Platform'
 
 export interface DataSeries {

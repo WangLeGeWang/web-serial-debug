@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import type { DataPoint } from '@/utils/DataSourceProvider'
+import type { DataPoint } from '@/runtime/data/types'
 import { dataSeriesStorage, type DataSeries } from '@/utils/DataSeriesStorage'
 
 export const useDataSeriesStore = defineStore('dataSeries', () => {
