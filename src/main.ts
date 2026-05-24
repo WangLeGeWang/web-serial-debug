@@ -10,6 +10,7 @@ import App from './App.vue'
 import router from './router'
 // import { createRuntimeClient, RuntimeClientKey } from './runtime'
 import { initDataHub, getDataHub } from './runtime/data/DataHub'
+import { BroadcastChannelTransport } from './runtime/transport/BroadcastChannelTransport'
 import { WorkspaceManagerInst, ensureWorkspaceNamespace } from './utils/ProfileManager'
 import { ScriptManager } from './utils/ScriptManager'
 import { useFieldStore, bindFieldStoreToDataHub } from './store/fieldStore'
@@ -57,6 +58,14 @@ function bootstrapDataHub(): void {
     ScriptManager.getInstance().setNamespaceProvider(
       () => (WorkspaceManagerInst.activeWorkspace?.config?.namespace as string) ?? 'default'
     )
+
+    if (typeof BroadcastChannel !== 'undefined') {
+      const bc = new BroadcastChannelTransport('wssd-hub')
+      bc.start().then(() => {
+        getDataHub().attachTransport(bc)
+        console.log('[transport] broadcast channel attached')
+      }).catch(err => console.error('[transport] broadcast channel start failed:', err))
+    }
   } catch (err) {
     console.error('[DataHub] bootstrap failed:', err)
   }
