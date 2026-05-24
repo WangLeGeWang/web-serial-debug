@@ -61,6 +61,8 @@ watch(showWorkspacePopover, (visible) => {
   }
 })
 const workspaceName = ref('')
+const workspaceNamespace = ref('')
+const NS_PATTERN = /^[A-Za-z0-9_-]{1,64}$/
 const workspaceDeviceId = ref<string | null>(null)
 const autoReconnect = ref(false)
 const autoAddField = ref(true)
@@ -81,6 +83,7 @@ const baudRates = [921600, 460800, 230400, 115200, 57600, 38400, 19200, 9600, 48
 
 const loadWorkspaceSettings = (workspace: Workspace) => {
   workspaceName.value = workspace.name
+  workspaceNamespace.value = workspace.config.namespace ?? workspace.id
   workspaceDeviceId.value = workspace.deviceId
   autoReconnect.value = workspace.config.autoReconnect ?? false
   autoAddField.value = workspace.config.autoAddField ?? true
@@ -99,6 +102,38 @@ const openSettings = () => {
   }
   activeSettingsSection.value = 'basic'
   showSettings.value = true
+}
+
+const saveNamespace = () => {
+  const workspace = activeWorkspace.value
+  if (!workspace) return
+  const current = workspace.config.namespace ?? workspace.id
+  const next = workspaceNamespace.value.trim()
+  if (next === current) {
+    workspaceNamespace.value = current
+    return
+  }
+  if (!NS_PATTERN.test(next)) {
+    ElMessage.error('命名空间格式不合法，需匹配 ^[A-Za-z0-9_-]{1,64}$')
+    workspaceNamespace.value = current
+    return
+  }
+  const conflict = workspaces.value.some(
+    w => w.id !== workspace.id && w.config?.namespace === next
+  )
+  if (conflict) {
+    ElMessage.error('命名空间已被其它工作区占用')
+    workspaceNamespace.value = current
+    return
+  }
+  workspaceManager.updateWorkspace(workspace.id, {
+    config: {
+      ...workspace.config,
+      namespace: next
+    }
+  })
+  workspaceNamespace.value = next
+  ElMessage.success('命名空间已更新')
 }
 
 const saveWorkspaceSettings = () => {
@@ -716,6 +751,13 @@ const testWorkspaceDevice = async () => {
             <el-form label-width="110px">
               <el-form-item label="名称">
                 <el-input v-model="workspaceName" placeholder="工作区名称" />
+              </el-form-item>
+              <el-form-item label="命名空间">
+                <el-input
+                  v-model="workspaceNamespace"
+                  placeholder="仅允许字母数字、下划线和中划线，1-64 字符"
+                  @blur="saveNamespace"
+                />
               </el-form-item>
               <el-form-item label="工作区 ID">
                 <el-input :model-value="activeWorkspace?.id || ''" disabled />
