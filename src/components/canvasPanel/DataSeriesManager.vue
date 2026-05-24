@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import { storeToRefs } from 'pinia'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useDataSeriesStore } from '../../store/dataSeriesStore'
-import { useDataSource } from '../../utils/DataSourceProvider'
-import { realtimeProvider } from '../../utils/RealtimeProvider'
+import { useDataSource } from '@/runtime/source/useDataSource'
+import { usePlaybackStore } from '@/store/playbackStore'
 
 const props = withDefaults(defineProps<{
   visible?: boolean
@@ -17,7 +18,17 @@ const emit = defineEmits<{
 }>()
 
 const dataSeriesStore = useDataSeriesStore()
-const dataSource = useDataSource()
+const playbackStore = usePlaybackStore()
+const { activeQuery, mode: storeMode, historyTimeRange, windowDuration } = storeToRefs(playbackStore)
+const ds = useDataSource(activeQuery.value, storeMode.value)
+ds.setWindowDuration(windowDuration.value)
+if (historyTimeRange.value) ds.setTimeRange(historyTimeRange.value)
+
+watch(storeMode, (m) => ds.setMode(m))
+watch(activeQuery, (q) => ds.setQuery(q), { deep: true })
+watch(historyTimeRange, (r) => { if (r) ds.setTimeRange(r) })
+watch(windowDuration, (ms) => ds.setWindowDuration(ms))
+
 const isSaving = ref(false)
 
 const drawerVisible = computed({
@@ -27,15 +38,9 @@ const drawerVisible = computed({
   }
 })
 
-const currentDataPoints = computed(() => {
-  if (dataSource.mode === 'realtime') return realtimeProvider.dataPoints.value
-  return dataSource.visibleData
-})
-
-const currentFields = computed(() => {
-  if (dataSource.mode === 'realtime') return realtimeProvider.fields.value
-  return dataSource.fields
-})
+// TODO(Task 21): 录制 API 落地后，realtime 模式应能保存完整 buffer，而不止 window 内数据
+const currentDataPoints = computed(() => ds.visibleData)
+const currentFields = computed(() => ds.fields)
 
 const canSaveCurrentData = computed(() => currentDataPoints.value.length > 0 && currentFields.value.length > 0)
 
@@ -57,7 +62,7 @@ function formatSize(bytes: number) {
 function getDefaultSeriesName() {
   const date = new Date()
   const dateText = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}:${String(date.getSeconds()).padStart(2, '0')}`
-  return `${dataSource.mode === 'realtime' ? '实时数据' : '回放片段'} ${dateText}`
+  return `${ds.mode === 'realtime' ? '实时数据' : '回放片段'} ${dateText}`
 }
 
 async function handleSaveCurrentData() {

@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { storeToRefs } from 'pinia'
 import { useDark } from '@vueuse/core'
-import { useDataSource, type DataPoint } from '../../utils/DataSourceProvider'
+import { useDataSource } from '@/runtime/source/useDataSource'
+import { usePlaybackStore } from '@/store/playbackStore'
+import type { DataPoint } from '@/runtime/data/types'
 import { echarts, type ECharts, type EChartsOption, type LineSeriesOption } from './echartsCore'
 import { createBaseOption, getTheme } from './chartTheme'
 
@@ -30,7 +33,17 @@ const props = withDefaults(defineProps<Props>(), {
 const chartEl = ref<HTMLElement | null>(null)
 const chart = ref<ECharts | null>(null)
 const isDark = useDark()
-const dataSource = useDataSource()
+const playbackStore = usePlaybackStore()
+const { activeQuery, mode: storeMode, historyTimeRange, windowDuration } = storeToRefs(playbackStore)
+const ds = useDataSource(activeQuery.value, storeMode.value)
+ds.setWindowDuration(windowDuration.value)
+if (historyTimeRange.value) ds.setTimeRange(historyTimeRange.value)
+
+watch(storeMode, (m) => ds.setMode(m))
+watch(activeQuery, (q) => ds.setQuery(q), { deep: true })
+watch(historyTimeRange, (r) => { if (r) ds.setTimeRange(r) })
+watch(windowDuration, (ms) => ds.setWindowDuration(ms))
+
 let resizeObserver: ResizeObserver | null = null
 let refreshTimer: number | null = null
 
@@ -38,11 +51,11 @@ const theme = computed(() => getTheme(isDark.value))
 
 const chartFields = computed(() => {
   if (props.fields.length > 0) return props.fields
-  return dataSource.fields
+  return ds.fields
 })
 
 const visiblePoints = computed<DataPoint[]>(() => {
-  const points = dataSource.visibleData
+  const points = ds.visibleData
   const maxPoints = Number(props.maxPoints) || 10000
   if (points.length <= maxPoints) return points
   return points.slice(-maxPoints)
@@ -181,7 +194,7 @@ const resizeChart = () => {
   chart.value?.resize()
 }
 
-watch(() => [dataSource.mode, dataSource.timeRange, dataSource.fields, dataSource.visibleData.length], scheduleRender, { deep: true })
+watch(() => [ds.mode, ds.timeRange, ds.fields, ds.visibleData.length], scheduleRender, { deep: true })
 watch(() => [props.fields, props.maxPoints, props.sampling, props.showArea, props.showSymbol, props.smooth, props.lineWidth], renderChart, { deep: true })
 watch(isDark, renderChart)
 

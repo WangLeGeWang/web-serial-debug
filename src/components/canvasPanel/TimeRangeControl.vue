@@ -1,15 +1,27 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
+import { storeToRefs } from 'pinia'
 import uPlot from 'uplot'
 import 'uplot/dist/uPlot.min.css'
 import { useDark } from '@vueuse/core'
-import { realtimeProvider } from '@/utils/RealtimeProvider'
+import { useDataSource } from '@/runtime/source/useDataSource'
+import { usePlaybackStore } from '@/store/playbackStore'
 
 const isDark = useDark()
+const playbackStore = usePlaybackStore()
+const { activeQuery, mode: storeMode, historyTimeRange, windowDuration } = storeToRefs(playbackStore)
+const ds = useDataSource(activeQuery.value, storeMode.value)
+ds.setWindowDuration(windowDuration.value)
+if (historyTimeRange.value) ds.setTimeRange(historyTimeRange.value)
+
+watch(storeMode, (m) => ds.setMode(m))
+watch(activeQuery, (q) => ds.setQuery(q), { deep: true })
+watch(historyTimeRange, (r) => { if (r) ds.setTimeRange(r) })
+watch(windowDuration, (ms) => ds.setWindowDuration(ms))
 
 const isRealtime = computed({
-  get: () => realtimeProvider.isRealtime.value,
-  set: (val) => realtimeProvider.toggleRealtime(val)
+  get: () => storeMode.value === 'realtime',
+  set: (val) => playbackStore.setMode(val ? 'realtime' : 'history')
 })
 
 const container = ref<HTMLElement | null>(null)
@@ -231,7 +243,7 @@ const initPlot = () => {
 const updatePlot = () => {
   if (!plot) return
 
-  const data = realtimeProvider.dataPoints
+  const data = ds.visibleData
   if (data.length === 0) {
     plot.setData([[0], [0]])
     return
@@ -247,7 +259,7 @@ const updatePlot = () => {
 }
 
 // 监听数据变化
-watch(() => realtimeProvider.dataPoints, updatePlot, { deep: true })
+watch(() => ds.visibleData, updatePlot, { deep: true })
 
 // 监听主题变化
 watch(currentTheme, () => {

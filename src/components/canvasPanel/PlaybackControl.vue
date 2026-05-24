@@ -3,9 +3,6 @@ import { computed, watch, onMounted, onUnmounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { usePlaybackStore } from '../../store/playbackStore'
 import { useDataSeriesStore } from '../../store/dataSeriesStore'
-import { setDataSourceProvider, createRealtimeProvider, realtimeProvider } from '../../utils/RealtimeProvider'
-import { useDataSource } from '../../utils/DataSourceProvider'
-import { createPlaybackProviderFromSeries } from '../../utils/PlaybackProvider'
 import { PlaybackController } from '../../utils/PlaybackController'
 import type { PlaybackSpeed } from '../../utils/PlaybackController'
 
@@ -15,7 +12,6 @@ const emit = defineEmits<{
 
 const playbackStore = usePlaybackStore()
 const dataSeriesStore = useDataSeriesStore()
-const dataSource = useDataSource()
 
 let controller: PlaybackController | null = null
 
@@ -51,11 +47,6 @@ const pickerTitle = computed(() => {
 })
 const pickerSubtitle = computed(() => playbackStore.isActive ? `${rangeText.value} · ${playbackStore.speed}x` : '实时数据窗口')
 
-function syncPlaybackTime(time: number) {
-  playbackStore.currentTime = time
-  dataSource.setCurrentTime?.(time)
-}
-
 function stopController() {
   controller?.destroy()
   controller = null
@@ -65,8 +56,6 @@ function switchToLive() {
   stopController()
   playbackStore.setPlaying(false)
   playbackStore.setActiveSeries(null)
-  realtimeProvider.setWindowDuration(playbackStore.windowDuration)
-  setDataSourceProvider(createRealtimeProvider())
 }
 
 async function switchToPlayback() {
@@ -87,11 +76,6 @@ async function switchToPlayback() {
 
 function handleLiveRangeChange(duration: number) {
   playbackStore.setWindowDuration(duration)
-  realtimeProvider.setWindowDuration(duration)
-  dataSource.setWindowDuration?.(duration)
-  if (!playbackStore.isActive) {
-    setDataSourceProvider(createRealtimeProvider())
-  }
 }
 
 async function handleSeriesChange(seriesId: string) {
@@ -101,17 +85,13 @@ async function handleSeriesChange(seriesId: string) {
   playbackStore.setPlaying(false)
   playbackStore.setActiveSeries(series)
 
-  const provider = await createPlaybackProviderFromSeries(series, playbackStore.windowDuration)
-  setDataSourceProvider(provider)
-  syncPlaybackTime(series.startTime)
-
   stopController()
   controller = new PlaybackController({
     startTime: series.startTime,
     endTime: series.endTime,
     windowDuration: playbackStore.windowDuration,
     onTick: (time) => {
-      syncPlaybackTime(time)
+      playbackStore.seekToTime(time)
     }
   })
 }
@@ -122,7 +102,6 @@ function handleSeek(e: number | number[]) {
   if (controller) {
     controller.seek(playbackStore.currentTime)
   }
-  dataSource.setCurrentTime?.(playbackStore.currentTime)
 }
 
 function handleSpeedChange(speed: number) {
@@ -150,7 +129,6 @@ function handleStepBack() {
   if (controller) {
     controller.seek(playbackStore.currentTime)
   }
-  dataSource.setCurrentTime?.(playbackStore.currentTime)
 }
 
 function handleStepForward() {
@@ -159,7 +137,6 @@ function handleStepForward() {
   if (controller) {
     controller.seek(playbackStore.currentTime)
   }
-  dataSource.setCurrentTime?.(playbackStore.currentTime)
 }
 
 function handleGoToStart() {
@@ -168,7 +145,6 @@ function handleGoToStart() {
   if (controller) {
     controller.seek(playbackStore.currentTime)
   }
-  dataSource.setCurrentTime?.(playbackStore.currentTime)
 }
 
 function handleGoToEnd() {
@@ -177,7 +153,6 @@ function handleGoToEnd() {
   if (controller) {
     controller.seek(playbackStore.currentTime)
   }
-  dataSource.setCurrentTime?.(playbackStore.currentTime)
 }
 
 function handleOpenManager() {
@@ -231,7 +206,6 @@ function handleKeydown(e: KeyboardEvent) {
 onMounted(() => {
   window.addEventListener('keydown', handleKeydown)
   dataSeriesStore.loadSeriesList()
-  realtimeProvider.setWindowDuration(playbackStore.windowDuration)
 })
 
 onUnmounted(() => {
