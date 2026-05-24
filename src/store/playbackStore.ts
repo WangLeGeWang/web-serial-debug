@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref, computed, onScopeDispose } from 'vue'
 import type { PlaybackSpeed, PlaybackDirection, LoopMode } from '@/utils/PlaybackController'
 import type { DataSeries } from '@/utils/DataSeriesStorage'
 import type { DataQuery } from '@/runtime/data/types'
@@ -26,8 +26,11 @@ export const usePlaybackStore = defineStore('playback', () => {
   const activeQuery = ref<DataQuery>({ namespace: resolveActiveNamespace() })
   const historyTimeRange = ref<[number, number] | null>(null)
 
-  WorkspaceManagerInst.onWorkspaceChange(() => {
+  const unsubscribeWorkspace = WorkspaceManagerInst.onWorkspaceChange(() => {
     activeQuery.value = { ...activeQuery.value, namespace: resolveActiveNamespace() }
+  })
+  onScopeDispose(() => {
+    unsubscribeWorkspace()
   })
 
   const isActive = computed(() => mode.value !== 'realtime')
@@ -69,6 +72,7 @@ export const usePlaybackStore = defineStore('playback', () => {
   }
 
   function setHistoryTimeRange(range: [number, number] | null) {
+    if (mode.value === 'realtime' && range !== null) return
     historyTimeRange.value = range
   }
 
@@ -77,7 +81,7 @@ export const usePlaybackStore = defineStore('playback', () => {
     if (series) {
       mode.value = 'history'
       currentTime.value = series.startTime
-      historyTimeRange.value = [series.startTime, series.startTime + windowDuration.value]
+      historyTimeRange.value = [series.startTime - windowDuration.value, series.startTime]
     } else {
       mode.value = 'realtime'
       currentTime.value = 0
