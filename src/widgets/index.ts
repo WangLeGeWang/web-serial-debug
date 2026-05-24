@@ -4,9 +4,6 @@ export * from './PipelinePanel'
 export * from './Sim'
 export * from './ChartRocket'
 
-export { default as WidgetWrapper } from './WidgetWrapper/WidgetWrapper.vue'
-export { default as Widget } from './Widget/Widget.vue'
-
 import { chartPanelWidget, default as ChartPanel } from './ChartPanel'
 import { chartIMUWidget, default as ChartIMU } from './ChartIMU'
 import { pipelineWidget, default as PipelinePanel } from './PipelinePanel'
