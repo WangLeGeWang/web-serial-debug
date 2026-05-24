@@ -104,37 +104,57 @@ const openSettings = () => {
   showSettings.value = true
 }
 
+const namespaceEditingWorkspaceId = ref<string | null>(null)
+
+const onNamespaceFocus = () => {
+  namespaceEditingWorkspaceId.value = activeWorkspace.value?.id ?? null
+}
+
 const saveNamespace = () => {
-  const workspace = activeWorkspace.value
-  if (!workspace) return
-  const current = workspace.config.namespace ?? workspace.id
+  const editingId = namespaceEditingWorkspaceId.value ?? activeWorkspace.value?.id ?? null
+  namespaceEditingWorkspaceId.value = null
+  if (!editingId) return
+  const ws = workspaces.value.find(w => w.id === editingId)
+  if (!ws) return
   const next = workspaceNamespace.value.trim()
+  const current = ws.config?.namespace ?? ws.id
   if (next === current) {
-    workspaceNamespace.value = current
+    if (activeWorkspace.value?.id === ws.id) {
+      workspaceNamespace.value = current
+    }
     return
   }
   if (!NS_PATTERN.test(next)) {
     ElMessage.error('命名空间格式不合法，需匹配 ^[A-Za-z0-9_-]{1,64}$')
-    workspaceNamespace.value = current
+    if (activeWorkspace.value?.id === ws.id) {
+      workspaceNamespace.value = current
+    }
     return
   }
   const conflict = workspaces.value.some(
-    w => w.id !== workspace.id && w.config?.namespace === next
+    w => w.id !== ws.id && w.config?.namespace === next
   )
   if (conflict) {
     ElMessage.error('命名空间已被其它工作区占用')
-    workspaceNamespace.value = current
+    if (activeWorkspace.value?.id === ws.id) {
+      workspaceNamespace.value = current
+    }
     return
   }
-  workspaceManager.updateWorkspace(workspace.id, {
+  workspaceManager.updateWorkspace(ws.id, {
     config: {
-      ...workspace.config,
+      ...ws.config,
       namespace: next
     }
   })
-  workspaceNamespace.value = next
   ElMessage.success('命名空间已更新')
 }
+
+watch(activeWorkspace, (ws) => {
+  if (ws) {
+    workspaceNamespace.value = ws.config?.namespace ?? ws.id
+  }
+})
 
 const saveWorkspaceSettings = () => {
   const workspace = activeWorkspace.value
@@ -756,6 +776,7 @@ const testWorkspaceDevice = async () => {
                 <el-input
                   v-model="workspaceNamespace"
                   placeholder="仅允许字母数字、下划线和中划线，1-64 字符"
+                  @focus="onNamespaceFocus"
                   @blur="saveNamespace"
                 />
               </el-form-item>
