@@ -43,50 +43,6 @@ class LocalStorageAdapter implements StorageAdapter {
   }
 }
 
-class FileStorageAdapter implements StorageAdapter {
-  private basePath = ''
-
-  async init(basePath: string): Promise<void> {
-    this.basePath = basePath
-  }
-
-  get<T>(key: string): T | null {
-    try {
-      return (window as any).readConfig?.(this.getFilePath(key)) || null
-    } catch {
-      return null
-    }
-  }
-
-  set<T>(key: string, value: T): void {
-    try {
-      (window as any).writeConfig?.(this.getFilePath(key), JSON.stringify(value, null, 2))
-    } catch (error) {
-      console.error('FileStorage set error:', error)
-    }
-  }
-
-  remove(key: string): void {
-    try {
-      (window as any).removeConfig?.(this.getFilePath(key))
-    } catch (error) {
-      console.error('FileStorage remove error:', error)
-    }
-  }
-
-  getAllKeys(): string[] {
-    try {
-      return (window as any).listConfigs?.(this.basePath) || []
-    } catch {
-      return []
-    }
-  }
-
-  private getFilePath(key: string): string {
-    return `${this.basePath}/${key}.json`
-  }
-}
-
 class MemoryStorageAdapter implements StorageAdapter {
   private store = new Map<string, any>()
 
@@ -110,13 +66,10 @@ class MemoryStorageAdapter implements StorageAdapter {
 let storageAdapter: StorageAdapter
 
 export function initStorage(): StorageAdapter {
-  if (isDesktop()) {
-    const adapter = new FileStorageAdapter()
-    adapter.init('config')
-    storageAdapter = adapter
-  } else {
-    storageAdapter = new LocalStorageAdapter()
-  }
+  // 桌面端（Tauri）与浏览器统一使用 LocalStorage：Tauri WebView 自带且持久化到用户数据目录。
+  // 若未来要落盘 JSON 配置文件，可在此切换为 @tauri-apps/plugin-fs 的异步实现。
+  void isDesktop
+  storageAdapter = new LocalStorageAdapter()
   return storageAdapter
 }
 

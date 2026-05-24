@@ -1,27 +1,24 @@
 import { type IDevice, type DeviceInfo } from '../types'
+import { desktopApi } from '../../utils/desktopApi'
 
-declare global {
-  interface Window {
-    initSerial: (portName: string, baudRate: number, dataBits: number, stopBits: number, parity: string, flowControl: string) => Promise<void>
-    writeSerial: (data: string) => Promise<void>
-    readSerial: (callbackName: string) => void
-    getSerialPorts: () => Promise<string[]>
-    getVersionInfo: () => Promise<{ buildTime: string; version: string }>
-  }
-}
+type ReadResult = { done: boolean; value: Uint8Array }
 
 export class DesktopSerialDevice implements IDevice {
   id: string
   title: string
   type: string = 'desktop-serial'
   port: any = null
+
   private portName: string = ''
   private baudRate: number = 115200
   private dataBits: number = 8
-  private stopBits: number = 1
+  private stopBits: string = '1'
   private parity: string = 'none'
   private flowControl: string = 'none'
-  private onDataCallback: ((data: Uint8Array) => void) | null = null
+
+  private inboundQueue: Uint8Array[] = []
+  private pendingResolve: ((r: ReadResult) => void) | null = null
+  private closed = false
 
   constructor(portName: string, baudRate: number = 115200) {
     this.portName = portName
@@ -32,18 +29,25 @@ export class DesktopSerialDevice implements IDevice {
 
   static async getAvailablePorts(): Promise<string[]> {
     try {
-      return await window.getSerialPorts()
+      return await desktopApi.getSerialPorts()
     } catch {
       return []
     }
   }
 
   async init(): Promise<void> {
-    try {
-      await window.initSerial(this.portName, this.baudRate, this.dataBits, this.stopBits, this.parity, this.flowControl)
-    } catch (error) {
-      throw new Error(`初始化串口失败: ${error}`)
-    }
+    await desktopApi.openSerial(
+      {
+        portName: this.portName,
+        baudRate: this.baudRate,
+        dataBits: this.dataBits,
+        stopBits: String(this.stopBits),
+        parity: this.parity,
+        flowControl: this.flowControl,
+      },
+      (bytes) => this.handleIncoming(bytes),
+    )
+    this.closed = false
   }
 
   async request(): Promise<IDevice | null> {
@@ -55,56 +59,41 @@ export class DesktopSerialDevice implements IDevice {
     reader: ReadableStreamDefaultReader
   } | null> {
     try {
-      if (config?.baudRate) {
-        this.baudRate = config.baudRate
-      }
-      if (config?.dataBits) {
-        this.dataBits = config.dataBits
-      }
-      if (config?.stopBits) {
-        this.stopBits = config.stopBits
-      }
-      if (config?.parity) {
-        this.parity = config.parity
-      }
-      if (config?.flowControl) {
-        this.flowControl = config.flowControl
-      }
+      if (config?.baudRate) this.baudRate = config.baudRate
+      if (config?.dataBits) this.dataBits = config.dataBits
+      if (config?.stopBits) this.stopBits = String(config.stopBits)
+      if (config?.parity) this.parity = config.parity
+      if (config?.flowControl) this.flowControl = config.flowControl
+
       await this.init()
 
-      const callbackName = `__desktopSerialCallback_${this.id.replace(/[^a-zA-Z0-9]/g, '_')}`
-      const globalCallback = (data: string) => {
-        if (this.onDataCallback) {
-          const bytes = new TextEncoder().encode(data)
-          this.onDataCallback(bytes)
-        }
-      }
-      ;(window as any)[callbackName] = globalCallback
-
       const writer = {
-        write: (chunk: Uint8Array) => {
-          const str = new TextDecoder().decode(chunk)
-          return window.writeSerial(str)
-        },
-        close: () => Promise.resolve(),
-        abort: () => Promise.resolve(),
+        write: (chunk: Uint8Array) => desktopApi.writeSerial(chunk),
+        close: () => desktopApi.closeSerial(),
+        abort: () => desktopApi.closeSerial(),
         closed: Promise.resolve(),
         ready: Promise.resolve(),
-        releaseLock: () => {}
-      }
-
-      window.readSerial(callbackName)
+        releaseLock: () => {},
+      } as unknown as WritableStreamDefaultWriter
 
       const reader = {
-        read: () => new Promise<{ done: boolean; value: Uint8Array }>((resolve) => {
-          this.onDataCallback = (data: Uint8Array) => {
-            resolve({ done: false, value: data })
-          }
-        }),
-        cancel: () => Promise.resolve(),
+        read: () =>
+          new Promise<ReadResult>((resolve) => {
+            if (this.closed) {
+              resolve({ done: true, value: new Uint8Array() })
+              return
+            }
+            const next = this.inboundQueue.shift()
+            if (next) {
+              resolve({ done: false, value: next })
+            } else {
+              this.pendingResolve = resolve
+            }
+          }),
+        cancel: () => this.disconnect(),
         closed: Promise.resolve(),
-        releaseLock: () => {}
-      }
+        releaseLock: () => {},
+      } as unknown as ReadableStreamDefaultReader
 
       return { writer, reader }
     } catch (error) {
@@ -114,14 +103,30 @@ export class DesktopSerialDevice implements IDevice {
   }
 
   async disconnect(): Promise<void> {
-    this.onDataCallback = null
-    const callbackName = `__desktopSerialCallback_${this.id.replace(/[^a-zA-Z0-9]/g, '_')}`
-    delete (window as any)[callbackName]
+    this.closed = true
+    try {
+      await desktopApi.closeSerial()
+    } catch {
+      // 忽略关闭异常
+    }
+    if (this.pendingResolve) {
+      this.pendingResolve({ done: true, value: new Uint8Array() })
+      this.pendingResolve = null
+    }
+    this.inboundQueue = []
   }
 
   getInfo(): DeviceInfo {
-    return {
-      productName: this.portName
+    return { productName: this.portName }
+  }
+
+  private handleIncoming(bytes: Uint8Array) {
+    if (this.pendingResolve) {
+      const resolve = this.pendingResolve
+      this.pendingResolve = null
+      resolve({ done: false, value: bytes })
+    } else {
+      this.inboundQueue.push(bytes)
     }
   }
 }
