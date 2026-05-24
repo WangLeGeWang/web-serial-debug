@@ -12,6 +12,7 @@ import router from './router'
 import { setDataSourceProvider, createRealtimeProvider } from './utils/RealtimeProvider'
 import { initDataHub, getDataHub } from './runtime/data/DataHub'
 import { WorkspaceManagerInst, ensureWorkspaceNamespace } from './utils/ProfileManager'
+import { ScriptManager } from './utils/ScriptManager'
 
 const PAGE_ORIGIN_KEY = 'wssd.pageOrigin'
 
@@ -52,6 +53,10 @@ function bootstrapDataHub(): void {
 
     syncCurrentNamespace()
     WorkspaceManagerInst.onWorkspaceChange(() => syncCurrentNamespace())
+
+    ScriptManager.getInstance().setNamespaceProvider(
+      () => (WorkspaceManagerInst.activeWorkspace?.config?.namespace as string) ?? 'default'
+    )
   } catch (err) {
     console.error('[DataHub] bootstrap failed:', err)
   }

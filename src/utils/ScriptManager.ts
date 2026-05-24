@@ -2,6 +2,7 @@ import { SerialHelper } from './SerialHelper'
 import { useFieldStore } from '../store/fieldStore'
 import { EventCenter, EventNames } from '../utils/EventCenter'
 import { ProfileManagerInst } from './ProfileManager'
+import { getDataHub } from '../runtime/data/DataHub'
 
 const eventCenter = EventCenter.getInstance()
 
@@ -83,6 +84,7 @@ export class ScriptManager {
   }
   private RuntimerTimerIntervals: number[] = []
   private RuntimerTimerouts: number[] = []
+  private namespaceProvider: () => string = () => 'default'
 
   private constructor() {
     this.loadScript()
@@ -93,6 +95,25 @@ export class ScriptManager {
       ScriptManager.instance = new ScriptManager()
     }
     return ScriptManager.instance
+  }
+
+  public setNamespaceProvider(fn: () => string): void {
+    this.namespaceProvider = fn
+  }
+
+  public updateDataTable(values: Record<string, any>): void {
+    try {
+      const hub = getDataHub()
+      const namespace = this.namespaceProvider() || 'default'
+      hub.append({
+        namespace,
+        timestamp: Date.now(),
+        values
+      })
+    } catch (err) {
+      console.warn('[ScriptManager] updateDataTable fallback to EventCenter:', err)
+      eventCenter.emit(EventNames.DATA_UPDATE, values)
+    }
   }
 
   public getScript(): Script {
@@ -128,7 +149,7 @@ export class ScriptManager {
           eventCenter.emit(EventNames.SERIAL_SEND, data)
         },
         updateDataTable: (data: any) => {
-          eventCenter.emit(EventNames.DATA_UPDATE, data)
+          this.updateDataTable(data)
         },
         getDataTables: () => {
           const fieldStore = useFieldStore()
