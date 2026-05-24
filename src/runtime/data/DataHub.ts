@@ -1,7 +1,7 @@
 import { NamespaceStore } from './NamespaceStore'
 import { EventCenter, EventNames } from '@/utils/EventCenter'
 import type {
-  DataFrame, DataQuery, DataPoint, NamespaceOrigin
+  DataFrame, DataQuery, DataPoint, NamespaceOrigin, HistoryQuery
 } from './types'
 
 export interface DataHubOptions {
@@ -121,6 +121,12 @@ export class DataHub {
     const s = this.namespaces.get(query.namespace)
     if (!s) return []
     return s.buffer.windowByTime(windowMs)
+  }
+
+  async queryHistory(_query: HistoryQuery): Promise<DataPoint[]> {
+    // 真正实现见 Task 17（HistoryStorage 路由）；现仅返回空集，
+    // 让 DataSourceProvider 的 history 模式在未接入存储前可工作。
+    return []
   }
 
   getNamespaceOrigin(ns: string): NamespaceOrigin | undefined {
