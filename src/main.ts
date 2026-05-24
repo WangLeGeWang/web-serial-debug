@@ -13,6 +13,7 @@ import { setDataSourceProvider, createRealtimeProvider } from './utils/RealtimeP
 import { initDataHub, getDataHub } from './runtime/data/DataHub'
 import { WorkspaceManagerInst, ensureWorkspaceNamespace } from './utils/ProfileManager'
 import { ScriptManager } from './utils/ScriptManager'
+import { useFieldStore, bindFieldStoreToDataHub } from './store/fieldStore'
 
 const PAGE_ORIGIN_KEY = 'wssd.pageOrigin'
 
@@ -80,6 +81,16 @@ async function bootstrap() {
   app.use(router)
   app.use(ElementPlus)
   app.mount('#app')
+
+  // pinia 已挂载，可以安全地实例化 store 并把它绑定到 DataHub.subscribeCurrent。
+  // 这里替换了 WorkbenchPage.vue 里原先 EventCenter.on(DATA_UPDATE) → handleDataUpdate 的桥，
+  // 避免「DataHub.append → EventCenter.emit → handleDataUpdate」和「DataHub.subscribeCurrent → handleDataUpdate」
+  // 同一帧被处理两次。
+  try {
+    bindFieldStoreToDataHub(useFieldStore(pinia))
+  } catch (err) {
+    console.error('[fieldStore] bind to DataHub failed:', err)
+  }
 
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {

@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { ProfileManagerInst } from '../utils/ProfileManager'
+import { getDataHub } from '../runtime/data/DataHub'
 
 export interface DataField {
   id: number
@@ -84,7 +85,6 @@ export const useFieldStore = defineStore('field', () => {
   const fields = ref<DataField[]>([])
   const nextId = ref(1)
   const columnVisibility = ref<ColumnVisibility>({ ...defaultColumnVisibility })
-
   const loadFromProfile = () => {
     const profile = profileManager.activeProfile
     if (profile?.config?.fields && profile.config.fields.length > 0) {
@@ -218,3 +218,26 @@ export const useFieldStore = defineStore('field', () => {
 })
 
 export const useDataStore = useFieldStore
+
+export type FieldStore = ReturnType<typeof useFieldStore>
+
+/**
+ * 把 fieldStore 绑定到 DataHub.subscribeCurrent。
+ * 必须在 DataHub 已 init 之后调用（通常在 main.ts bootstrap 结束后）。
+ * 返回 dispose 函数，用于取消订阅（测试隔离 / hot-reload）。
+ *
+ * 如果 DataHub 尚未初始化（例如在测试或工具脚本中），返回一个 no-op dispose，
+ * 不抛出，方便调用方安心 try。
+ */
+export function bindFieldStoreToDataHub(store: FieldStore): () => void {
+  let hub
+  try {
+    hub = getDataHub()
+  } catch {
+    return () => {}
+  }
+  const off = hub.subscribeCurrent((frame) => {
+    store.handleDataUpdate(frame.values, true)
+  })
+  return off
+}
