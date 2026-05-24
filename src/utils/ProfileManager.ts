@@ -37,6 +37,17 @@ const defaultConfig = {
 export const isConnected = ref(false)
 export const connectedDeviceId = ref<string | null>(null)
 
+export function ensureWorkspaceNamespace(ws: Workspace): boolean {
+  if (!ws.config || typeof ws.config !== 'object') {
+    ws.config = {}
+  }
+  if (typeof ws.config.namespace === 'string' && ws.config.namespace.length > 0) {
+    return false
+  }
+  ws.config.namespace = ws.id
+  return true
+}
+
 class WorkspaceManager {
   private static instance: WorkspaceManager
   private workspaces = ref<Workspace[]>([])
@@ -73,7 +84,17 @@ class WorkspaceManager {
     if (activeWorkspaceId) {
       this.activeWorkspaceId.value = activeWorkspaceId
     }
-    
+
+    let backfilled = false
+    for (const ws of this.workspaces.value) {
+      if (ensureWorkspaceNamespace(ws)) {
+        backfilled = true
+      }
+    }
+    if (backfilled) {
+      this.saveWorkspaces()
+    }
+
     if (this.workspaces.value.length === 0) {
       this.createWorkspace('默认工作区')
     }
@@ -162,6 +183,8 @@ class WorkspaceManager {
       createdAt: now,
       updatedAt: now
     }
+
+    ensureWorkspaceNamespace(workspace)
 
     this.workspaces.value.push(workspace)
     this.saveWorkspaces()
