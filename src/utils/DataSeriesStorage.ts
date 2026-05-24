@@ -24,6 +24,8 @@ const DB_NAME = 'wssd_data_series'
 const DB_VERSION = 2
 const LEGACY_NAMESPACE = 'legacy'
 
+export const CHUNK_SIZE = 10000
+
 class IndexedDBStorage {
   private db: IDBDatabase | null = null
   private initPromise: Promise<void> | null = null
@@ -137,7 +139,7 @@ class IndexedDBStorage {
     const candidates = series.filter(s => s.endTime >= range[0] && s.startTime <= range[1])
     const result: DataPoint[] = []
     for (const s of candidates) {
-      const total = Math.ceil(s.pointCount / 10000)
+      const total = Math.ceil(s.pointCount / CHUNK_SIZE)
       const chunkArrays = await Promise.all(
         Array.from({ length: total }, (_, i) => this.loadChunk(s.id, i))
       )
@@ -175,7 +177,7 @@ class IndexedDBStorage {
     if (!series) throw new Error('Series not found')
     
     const chunks: DataPoint[] = []
-    const totalChunks = Math.ceil(series.pointCount / 10000)
+    const totalChunks = Math.ceil(series.pointCount / CHUNK_SIZE)
     
     for (let i = 0; i < totalChunks; i++) {
       const chunkPoints = await this.loadChunk(seriesId, i)

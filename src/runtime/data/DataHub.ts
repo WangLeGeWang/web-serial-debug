@@ -4,7 +4,7 @@ import type {
   DataFrame, DataQuery, DataPoint, NamespaceOrigin, HistoryQuery, RecordingId
 } from './types'
 import type { HubTransport } from '@/runtime/transport/HubTransport'
-import { dataSeriesStorage, type DataSeries } from '@/utils/DataSeriesStorage'
+import { dataSeriesStorage, type DataSeries, CHUNK_SIZE } from '@/utils/DataSeriesStorage'
 import { lttb } from '@/utils/lttb'
 
 interface RecordingState {
@@ -19,9 +19,8 @@ interface RecordingState {
   firstTimestamp: number | null
   lastTimestamp: number
   pendingChunks: Promise<void>[]
+  hasError: boolean
 }
-
-const CHUNK_SIZE = 10000
 
 export interface DataHubOptions {
   origin: string
@@ -110,9 +109,11 @@ export class DataHub {
       if (r.buf.length >= CHUNK_SIZE) {
         const chunk = { seriesId: r.id, chunkIndex: r.chunkIndex++, points: r.buf }
         r.buf = []
+        const recording = r
         r.pendingChunks.push(
           dataSeriesStorage.saveChunk(chunk).catch(err => {
-            console.error('[DataHub] saveChunk failed', err)
+            recording.hasError = true
+            console.error(`[DataHub] saveChunk failed for recording ${recording.id} (ns=${recording.namespace}, chunkIndex=${chunk.chunkIndex})`, err)
           })
         )
       }
@@ -177,11 +178,14 @@ export class DataHub {
   }
 
   startRecording(namespace: string, name = 'untitled'): RecordingId {
-    const id = 'rec-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6)
+    const id: RecordingId = `rec-${crypto.randomUUID()}`
+    if (this.recordings.has(id)) {
+      throw new Error(`[DataHub.startRecording] recording id collision: ${id}`)
+    }
     this.recordings.set(id, {
       id, namespace, name, startTime: Date.now(),
       pointCount: 0, fields: new Set(), chunkIndex: 0, buf: [],
-      firstTimestamp: null, lastTimestamp: 0, pendingChunks: []
+      firstTimestamp: null, lastTimestamp: 0, pendingChunks: [], hasError: false
     })
     return id
   }
@@ -190,11 +194,16 @@ export class DataHub {
     const r = this.recordings.get(id)
     if (!r) throw new Error('recording not found: ' + id)
     this.recordings.delete(id)
-    await Promise.all(r.pendingChunks)
+    await Promise.allSettled(r.pendingChunks)
     if (r.buf.length > 0) {
-      await dataSeriesStorage.saveChunk({
-        seriesId: r.id, chunkIndex: r.chunkIndex, points: r.buf
-      })
+      try {
+        await dataSeriesStorage.saveChunk({
+          seriesId: r.id, chunkIndex: r.chunkIndex, points: r.buf
+        })
+      } catch (err) {
+        r.hasError = true
+        console.error(`[DataHub] saveChunk failed for tail chunk of recording ${r.id} (ns=${r.namespace}, chunkIndex=${r.chunkIndex})`, err)
+      }
     }
     const series: DataSeries = {
       id: r.id,
@@ -208,6 +217,9 @@ export class DataHub {
       sizeBytes: 0
     }
     await dataSeriesStorage.saveSeries(series)
+    if (r.hasError) {
+      console.warn(`[DataHub] recording ${r.id} completed with chunk save errors; series.pointCount (${r.pointCount}) may be inconsistent with persisted data`)
+    }
     return series
   }
 
@@ -260,6 +272,10 @@ export class DataHub {
     this.namespaceOrigin.clear()
     this.transports.clear()
     this.transportById.clear()
+    for (const r of this.recordings.values()) {
+      console.warn(`[DataHub] dispose: dropping in-flight recording ${r.id} (ns=${r.namespace}, ${r.pointCount} points, ${r.pendingChunks.length} pending chunks)`)
+      Promise.allSettled(r.pendingChunks).catch(() => {})
+    }
     this.recordings.clear()
   }
 }

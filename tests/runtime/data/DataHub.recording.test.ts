@@ -57,6 +57,15 @@ describe('DataHub recording', () => {
     expect(points[0].timestamp).toBe(0)
     expect(points[N - 1].timestamp).toBe(N - 1)
     expect(points[N - 1].values.v).toBe(N - 1)
+
+    const { dataSeriesStorage } = await import('@/utils/DataSeriesStorage')
+    const chunk0 = await dataSeriesStorage.loadChunk(series.id, 0)
+    const chunk1 = await dataSeriesStorage.loadChunk(series.id, 1)
+    expect(chunk0.length).toBe(10000)
+    expect(chunk0[0].timestamp).toBe(0)
+    expect(chunk0[9999].timestamp).toBe(9999)
+    expect(chunk1.length).toBe(1)
+    expect(chunk1[0].timestamp).toBe(10000)
   })
 
   it('非数字字段被过滤：只录 number，series.fields 不含 string/boolean', async () => {
@@ -108,5 +117,50 @@ describe('DataHub recording', () => {
     const ptsB = await hub.queryHistory({ namespace: 'ns-B', timeRange: [0, 10] })
     expect(ptsA.map(p => p.values.x)).toEqual([10, 20])
     expect(ptsB.map(p => p.values.y)).toEqual([30])
+  })
+
+  it('startRecording 不干扰旧 EventCenter.DATA_UPDATE 兼容路径', async () => {
+    const { initDataHub, getDataHub } = await import('@/runtime/data/DataHub')
+    const { EventCenter, EventNames } = await import('@/utils/EventCenter')
+    initDataHub({ origin: 'me', bufferCapacity: 1000 })
+    const hub = getDataHub()
+    const ec = EventCenter.getInstance()
+    const cb = vi.fn()
+    ec.on(EventNames.DATA_UPDATE, cb)
+    try {
+      hub.setCurrentWorkspaceNamespace('ns-rec')
+      hub.startRecording('ns-rec')
+      hub.append({ namespace: 'ns-rec', timestamp: 1, values: { a: 1 } })
+      expect(cb).toHaveBeenCalledWith({ a: 1 })
+    } finally {
+      ec.off(EventNames.DATA_UPDATE, cb)
+    }
+  })
+
+  it('saveChunk 失败时 append 不抛错，stopRecording resolve 并记录 warn', async () => {
+    const { initDataHub, getDataHub } = await import('@/runtime/data/DataHub')
+    const { dataSeriesStorage } = await import('@/utils/DataSeriesStorage')
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const saveChunkSpy = vi.spyOn(dataSeriesStorage, 'saveChunk').mockRejectedValueOnce(new Error('disk full'))
+    try {
+      initDataHub({ origin: 'me', bufferCapacity: 20000 })
+      const hub = getDataHub()
+      const id = hub.startRecording('ns-err', 'err')
+      for (let t = 0; t < 10000; t++) {
+        hub.append({ namespace: 'ns-err', timestamp: t, values: { v: t } })
+      }
+      const series = await hub.stopRecording(id)
+      expect(series.pointCount).toBe(10000)
+      expect(errorSpy).toHaveBeenCalled()
+      const errMsg = String(errorSpy.mock.calls[0][0])
+      expect(errMsg).toContain('saveChunk failed')
+      const warnMsgs = warnSpy.mock.calls.map(c => String(c[0]))
+      expect(warnMsgs.some(m => m.includes('completed with chunk save errors'))).toBe(true)
+    } finally {
+      saveChunkSpy.mockRestore()
+      errorSpy.mockRestore()
+      warnSpy.mockRestore()
+    }
   })
 })
