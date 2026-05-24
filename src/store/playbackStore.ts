@@ -2,9 +2,20 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { PlaybackSpeed, PlaybackDirection, LoopMode } from '@/utils/PlaybackController'
 import type { DataSeries } from '@/utils/DataSeriesStorage'
+import type { DataQuery } from '@/runtime/data/types'
+import type { DataSourceMode } from '@/runtime/source/DataSourceProvider'
+import { WorkspaceManagerInst } from '@/utils/ProfileManager'
+
+const DEFAULT_NAMESPACE = 'default'
+
+function resolveActiveNamespace(): string {
+  const ws = WorkspaceManagerInst.activeWorkspace
+  const ns = ws?.config?.namespace
+  return typeof ns === 'string' && ns.length > 0 ? ns : DEFAULT_NAMESPACE
+}
 
 export const usePlaybackStore = defineStore('playback', () => {
-  const isActive = ref(false)
+  const mode = ref<DataSourceMode>('realtime')
   const isPlaying = ref(false)
   const currentTime = ref(0)
   const speed = ref<PlaybackSpeed>(1)
@@ -12,6 +23,14 @@ export const usePlaybackStore = defineStore('playback', () => {
   const loopMode = ref<LoopMode>('none')
   const activeSeries = ref<DataSeries | null>(null)
   const windowDuration = ref(30000)
+  const activeQuery = ref<DataQuery>({ namespace: resolveActiveNamespace() })
+  const historyTimeRange = ref<[number, number] | null>(null)
+
+  WorkspaceManagerInst.onWorkspaceChange(() => {
+    activeQuery.value = { ...activeQuery.value, namespace: resolveActiveNamespace() }
+  })
+
+  const isActive = computed(() => mode.value !== 'realtime')
 
   const currentTimeFormatted = computed(() => {
     if (!activeSeries.value) return '00:00'
@@ -41,13 +60,28 @@ export const usePlaybackStore = defineStore('playback', () => {
     return Math.max(0, Math.min(1, p))
   })
 
+  function setMode(m: DataSourceMode) {
+    mode.value = m
+  }
+
+  function setQuery(q: DataQuery) {
+    activeQuery.value = { ...q }
+  }
+
+  function setHistoryTimeRange(range: [number, number] | null) {
+    historyTimeRange.value = range
+  }
+
   function setActiveSeries(series: DataSeries | null) {
     activeSeries.value = series
-    isActive.value = series !== null
     if (series) {
+      mode.value = 'history'
       currentTime.value = series.startTime
+      historyTimeRange.value = [series.startTime, series.startTime + windowDuration.value]
     } else {
+      mode.value = 'realtime'
       currentTime.value = 0
+      historyTimeRange.value = null
     }
   }
 
@@ -64,12 +98,14 @@ export const usePlaybackStore = defineStore('playback', () => {
     const clamped = Math.max(0, Math.min(1, progressPercent))
     const targetTime = activeSeries.value.startTime + totalDuration.value * clamped
     currentTime.value = targetTime
+    historyTimeRange.value = [targetTime - windowDuration.value, targetTime]
   }
 
   function seekToTime(time: number) {
     if (!activeSeries.value) return
     const clamped = Math.max(activeSeries.value.startTime, Math.min(activeSeries.value.endTime, time))
     currentTime.value = clamped
+    historyTimeRange.value = [clamped - windowDuration.value, clamped]
   }
 
   function setSpeed(s: PlaybackSpeed) {
@@ -86,6 +122,9 @@ export const usePlaybackStore = defineStore('playback', () => {
 
   function setWindowDuration(duration: number) {
     windowDuration.value = duration
+    if (mode.value !== 'realtime' && activeSeries.value) {
+      historyTimeRange.value = [currentTime.value - duration, currentTime.value]
+    }
   }
 
   function stepForward(ms: number = 5000) {
@@ -98,17 +137,18 @@ export const usePlaybackStore = defineStore('playback', () => {
 
   function goToStart() {
     if (activeSeries.value) {
-      currentTime.value = activeSeries.value.startTime
+      seekToTime(activeSeries.value.startTime)
     }
   }
 
   function goToEnd() {
     if (activeSeries.value) {
-      currentTime.value = activeSeries.value.endTime
+      seekToTime(activeSeries.value.endTime)
     }
   }
 
   return {
+    mode,
     isActive,
     isPlaying,
     currentTime,
@@ -117,10 +157,15 @@ export const usePlaybackStore = defineStore('playback', () => {
     loopMode,
     activeSeries,
     windowDuration,
+    activeQuery,
+    historyTimeRange,
     currentTimeFormatted,
     totalDuration,
     totalDurationFormatted,
     progress,
+    setMode,
+    setQuery,
+    setHistoryTimeRange,
     setActiveSeries,
     togglePlay,
     setPlaying,
