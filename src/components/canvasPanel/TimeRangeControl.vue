@@ -4,21 +4,16 @@ import { storeToRefs } from 'pinia'
 import uPlot from 'uplot'
 import 'uplot/dist/uPlot.min.css'
 import { useDark } from '@vueuse/core'
-import { useDataSource } from '@/runtime/source/useDataSource'
+import { useDataSourceFromPlaybackStore } from '@/runtime/source/useDataSourceFromPlaybackStore'
 import { usePlaybackStore } from '@/store/playbackStore'
 
 const isDark = useDark()
 const playbackStore = usePlaybackStore()
-const { activeQuery, mode: storeMode, historyTimeRange, windowDuration } = storeToRefs(playbackStore)
-const ds = useDataSource(activeQuery.value, storeMode.value)
-ds.setWindowDuration(windowDuration.value)
-if (historyTimeRange.value) ds.setTimeRange(historyTimeRange.value)
+const { mode: storeMode } = storeToRefs(playbackStore)
+const ds = useDataSourceFromPlaybackStore()
 
-watch(storeMode, (m) => ds.setMode(m))
-watch(activeQuery, (q) => ds.setQuery(q), { deep: true })
-watch(historyTimeRange, (r) => { if (r) ds.setTimeRange(r) })
-watch(windowDuration, (ms) => ds.setWindowDuration(ms))
-
+// 注：切换 isRealtime 现在会改变全局 playbackStore.mode，影响所有订阅 mode 的 widget
+// 旧版仅切换 realtimeProvider.isRealtime 显示标志位；新架构下 store 是唯一来源
 const isRealtime = computed({
   get: () => storeMode.value === 'realtime',
   set: (val) => playbackStore.setMode(val ? 'realtime' : 'history')

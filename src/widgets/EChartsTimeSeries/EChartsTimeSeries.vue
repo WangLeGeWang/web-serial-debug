@@ -1,9 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
-import { storeToRefs } from 'pinia'
 import { useDark } from '@vueuse/core'
-import { useDataSource } from '@/runtime/source/useDataSource'
-import { usePlaybackStore } from '@/store/playbackStore'
+import { useDataSourceFromPlaybackStore } from '@/runtime/source/useDataSourceFromPlaybackStore'
 import type { DataPoint } from '@/runtime/data/types'
 import { echarts, type ECharts, type EChartsOption, type LineSeriesOption } from './echartsCore'
 import { createBaseOption, getTheme } from './chartTheme'
@@ -33,16 +31,7 @@ const props = withDefaults(defineProps<Props>(), {
 const chartEl = ref<HTMLElement | null>(null)
 const chart = ref<ECharts | null>(null)
 const isDark = useDark()
-const playbackStore = usePlaybackStore()
-const { activeQuery, mode: storeMode, historyTimeRange, windowDuration } = storeToRefs(playbackStore)
-const ds = useDataSource(activeQuery.value, storeMode.value)
-ds.setWindowDuration(windowDuration.value)
-if (historyTimeRange.value) ds.setTimeRange(historyTimeRange.value)
-
-watch(storeMode, (m) => ds.setMode(m))
-watch(activeQuery, (q) => ds.setQuery(q), { deep: true })
-watch(historyTimeRange, (r) => { if (r) ds.setTimeRange(r) })
-watch(windowDuration, (ms) => ds.setWindowDuration(ms))
+const ds = useDataSourceFromPlaybackStore()
 
 let resizeObserver: ResizeObserver | null = null
 let refreshTimer: number | null = null

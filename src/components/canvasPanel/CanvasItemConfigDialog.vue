@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { storeToRefs } from 'pinia'
-import { useDataSource } from '@/runtime/source/useDataSource'
-import { usePlaybackStore } from '@/store/playbackStore'
+import { useDataSourceFromPlaybackStore } from '@/runtime/source/useDataSourceFromPlaybackStore'
 
 interface Props {
   visible: boolean
@@ -23,14 +21,8 @@ interface Emit {
 const props = defineProps<Props>()
 const emit = defineEmits<Emit>()
 
-const playbackStore = usePlaybackStore()
-const { activeQuery, mode: storeMode, windowDuration } = storeToRefs(playbackStore)
-const ds = useDataSource(activeQuery.value, storeMode.value)
-ds.setWindowDuration(windowDuration.value)
-
-watch(storeMode, (m) => ds.setMode(m))
-watch(activeQuery, (q) => ds.setQuery(q), { deep: true })
-watch(windowDuration, (ms) => ds.setWindowDuration(ms))
+// 字段下拉强制使用 realtime 数据源（独立于全局 mode），始终展示实时可见字段供配置
+const ds = useDataSourceFromPlaybackStore({ forceMode: 'realtime', includeTimeRange: false })
 
 const localItem = ref<any>(null)
 

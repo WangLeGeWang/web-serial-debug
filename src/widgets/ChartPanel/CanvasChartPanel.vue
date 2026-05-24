@@ -1,9 +1,7 @@
 <script setup lang="ts">
 import { computed, watch, ref } from 'vue'
-import { storeToRefs } from 'pinia'
 import LineChart from './LineChart.vue'
-import { useDataSource } from '@/runtime/source/useDataSource'
-import { usePlaybackStore } from '@/store/playbackStore'
+import { useDataSourceFromPlaybackStore } from '@/runtime/source/useDataSourceFromPlaybackStore'
 
 interface Props {
   fields?: string[]
@@ -13,16 +11,7 @@ const props = withDefaults(defineProps<Props>(), {
   fields: () => []
 })
 
-const playbackStore = usePlaybackStore()
-const { activeQuery, mode: storeMode, historyTimeRange, windowDuration } = storeToRefs(playbackStore)
-const ds = useDataSource(activeQuery.value, storeMode.value)
-ds.setWindowDuration(windowDuration.value)
-if (historyTimeRange.value) ds.setTimeRange(historyTimeRange.value)
-
-watch(storeMode, (m) => ds.setMode(m))
-watch(activeQuery, (q) => ds.setQuery(q), { deep: true })
-watch(historyTimeRange, (r) => { if (r) ds.setTimeRange(r) })
-watch(windowDuration, (ms) => ds.setWindowDuration(ms))
+const ds = useDataSourceFromPlaybackStore()
 
 const chartFields = computed(() => {
   const points = ds.visibleData

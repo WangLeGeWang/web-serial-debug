@@ -1,10 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import { storeToRefs } from 'pinia'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useDataSeriesStore } from '../../store/dataSeriesStore'
-import { useDataSource } from '@/runtime/source/useDataSource'
-import { usePlaybackStore } from '@/store/playbackStore'
+import { useDataSourceFromPlaybackStore } from '@/runtime/source/useDataSourceFromPlaybackStore'
 
 const props = withDefaults(defineProps<{
   visible?: boolean
@@ -18,16 +16,7 @@ const emit = defineEmits<{
 }>()
 
 const dataSeriesStore = useDataSeriesStore()
-const playbackStore = usePlaybackStore()
-const { activeQuery, mode: storeMode, historyTimeRange, windowDuration } = storeToRefs(playbackStore)
-const ds = useDataSource(activeQuery.value, storeMode.value)
-ds.setWindowDuration(windowDuration.value)
-if (historyTimeRange.value) ds.setTimeRange(historyTimeRange.value)
-
-watch(storeMode, (m) => ds.setMode(m))
-watch(activeQuery, (q) => ds.setQuery(q), { deep: true })
-watch(historyTimeRange, (r) => { if (r) ds.setTimeRange(r) })
-watch(windowDuration, (ms) => ds.setWindowDuration(ms))
+const ds = useDataSourceFromPlaybackStore()
 
 const isSaving = ref(false)
 
