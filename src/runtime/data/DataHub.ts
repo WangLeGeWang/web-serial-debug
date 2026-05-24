@@ -135,6 +135,9 @@ export class DataHub {
   }
 
   async queryHistory(query: HistoryQuery): Promise<DataPoint[]> {
+    if (query.timeRange[0] > query.timeRange[1]) {
+      throw new Error(`[DataHub.queryHistory] invalid timeRange: start ${query.timeRange[0]} > end ${query.timeRange[1]}`)
+    }
     const origin = this.namespaceOrigin.get(query.namespace) ?? 'local'
     if (origin === 'local') {
       const raw = await dataSeriesStorage.queryByRange(query.namespace, query.timeRange)

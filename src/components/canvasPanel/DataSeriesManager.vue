@@ -63,6 +63,7 @@ async function handleSaveCurrentData() {
   }
 
   try {
+    const namespace = playbackStore.activeQuery.namespace
     const result = await ElMessageBox.prompt('保存后可在 Playback 模式中选择并回放这段数据', '保存当前数据', {
       inputValue: getDefaultSeriesName(),
       inputPlaceholder: '请输入数据名称',
@@ -80,7 +81,7 @@ async function handleSaveCurrentData() {
     const fields = [...currentFields.value]
 
     isSaving.value = true
-    await dataSeriesStore.saveSeries(name, points, fields, playbackStore.activeQuery.namespace)
+    await dataSeriesStore.saveSeries(name, points, fields, namespace)
     ElMessage.success(`已保存 ${points.length.toLocaleString()} 个数据点`)
   } catch (error) {
     if (error !== 'cancel' && error !== 'close') {

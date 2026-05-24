@@ -22,6 +22,7 @@ export interface DataChunk {
 
 const DB_NAME = 'wssd_data_series'
 const DB_VERSION = 2
+const LEGACY_NAMESPACE = 'legacy'
 
 class IndexedDBStorage {
   private db: IDBDatabase | null = null
@@ -51,18 +52,18 @@ class IndexedDBStorage {
           chunkStore.createIndex('seriesId', 'seriesId', { unique: false })
         }
         if (event.oldVersion < 2) {
+          if (!seriesStore.indexNames.contains('namespace')) {
+            seriesStore.createIndex('namespace', 'namespace', { unique: false })
+          }
           seriesStore.openCursor().onsuccess = (e) => {
             const cursor = (e.target as IDBRequest).result
             if (cursor) {
               if (!cursor.value.namespace) {
-                cursor.value.namespace = 'legacy'
+                cursor.value.namespace = LEGACY_NAMESPACE
                 cursor.update(cursor.value)
               }
               cursor.continue()
             }
-          }
-          if (!seriesStore.indexNames.contains('namespace')) {
-            seriesStore.createIndex('namespace', 'namespace', { unique: false })
           }
         }
       }
@@ -137,8 +138,10 @@ class IndexedDBStorage {
     const result: DataPoint[] = []
     for (const s of candidates) {
       const total = Math.ceil(s.pointCount / 10000)
-      for (let i = 0; i < total; i++) {
-        const points = await this.loadChunk(s.id, i)
+      const chunkArrays = await Promise.all(
+        Array.from({ length: total }, (_, i) => this.loadChunk(s.id, i))
+      )
+      for (const points of chunkArrays) {
         for (const p of points) {
           if (p.timestamp >= range[0] && p.timestamp <= range[1]) result.push(p)
         }

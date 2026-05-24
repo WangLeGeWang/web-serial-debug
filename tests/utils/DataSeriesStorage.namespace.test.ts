@@ -39,4 +39,38 @@ describe('DataSeriesStorage namespace', () => {
     const pts = await dataSeriesStorage.queryByRange('ns-a', [10, 30])
     expect(pts.map(p => p.timestamp)).toEqual([15])
   })
+
+  it('v1→v2 migration: legacy series 自动落入 namespace="legacy" 且 index 项正确', async () => {
+    await new Promise<void>((resolve, reject) => {
+      const req = indexedDB.open('wssd_data_series', 1)
+      req.onupgradeneeded = () => {
+        const db = req.result
+        db.createObjectStore('series', { keyPath: 'id' })
+        const chunkStore = db.createObjectStore('chunks', { keyPath: ['seriesId', 'chunkIndex'] })
+        chunkStore.createIndex('seriesId', 'seriesId', { unique: false })
+      }
+      req.onsuccess = () => {
+        const db = req.result
+        const tx = db.transaction(['series'], 'readwrite')
+        tx.objectStore('series').put({
+          id: 'old1', name: 'legacy series', startTime: 0, endTime: 10,
+          pointCount: 0, fields: [], createdAt: 0, sizeBytes: 0
+        })
+        tx.oncomplete = () => { db.close(); resolve() }
+        tx.onerror = () => reject(tx.error)
+      }
+      req.onerror = () => reject(req.error)
+    })
+
+    const { dataSeriesStorage } = await import('@/utils/DataSeriesStorage')
+    await (dataSeriesStorage as any).init()
+
+    const legacy = await dataSeriesStorage.listSeries('legacy')
+    expect(legacy.length).toBe(1)
+    expect(legacy[0].id).toBe('old1')
+    expect(legacy[0].namespace).toBe('legacy')
+
+    const otherNs = await dataSeriesStorage.listSeries('ns-x')
+    expect(otherNs.length).toBe(0)
+  })
 })
