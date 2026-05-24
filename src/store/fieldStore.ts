@@ -226,6 +226,9 @@ export type FieldStore = ReturnType<typeof useFieldStore>
  * 必须在 DataHub 已 init 之后调用（通常在 main.ts bootstrap 结束后）。
  * 返回 dispose 函数，用于取消订阅（测试隔离 / hot-reload）。
  *
+ * 该订阅是应用级常驻订阅（main.ts 启动时绑定一次），负责把当前帧字段持续注入到
+ * fieldStore，因此 CanvasPanel 及其它 widget 无需再注册保底订阅来保活字段表。
+ *
  * 如果 DataHub 尚未初始化（例如在测试或工具脚本中），返回一个 no-op dispose，
  * 不抛出，方便调用方安心 try。
  */
