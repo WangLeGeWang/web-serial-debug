@@ -1,0 +1,81 @@
+import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { DataHub } from '@/runtime/data/DataHub'
+import { EventCenter, EventNames } from '@/utils/EventCenter'
+
+describe('DataHub basic', () => {
+  let hub: DataHub
+  beforeEach(() => { hub = new DataHub({ origin: 'test', bufferCapacity: 100 }) })
+
+  it('append(local) 自动补 origin/seq', () => {
+    let captured: any
+    hub.subscribe({ namespace: 'ns' }, f => { captured = f })
+    hub.append({ namespace: 'ns', timestamp: 1, values: { a: 1 } })
+    expect(captured.origin).toBe('test')
+    expect(captured.seq).toBe(1)
+    expect(captured.source).toBe('local')
+  })
+
+  it('append(remote) 必须显式提供 origin/seq', () => {
+    let captured: any
+    hub.subscribe({ namespace: 'ns' }, f => { captured = f })
+    hub.append({
+      namespace: 'ns', timestamp: 1, values: { a: 1 },
+      source: 'remote', origin: 'other', seq: 7
+    })
+    expect(captured.source).toBe('remote')
+    expect(captured.origin).toBe('other')
+    expect(captured.seq).toBe(7)
+  })
+
+  it('subscribe 按 namespace 过滤', () => {
+    const a = vi.fn(); const b = vi.fn()
+    hub.subscribe({ namespace: 'ns-a' }, a)
+    hub.subscribe({ namespace: 'ns-b' }, b)
+    hub.append({ namespace: 'ns-a', timestamp: 1, values: { x: 1 } })
+    expect(a).toHaveBeenCalledOnce()
+    expect(b).not.toHaveBeenCalled()
+  })
+
+  it('unsubscribe 返回值生效', () => {
+    const cb = vi.fn()
+    const off = hub.subscribe({ namespace: 'ns' }, cb)
+    off()
+    hub.append({ namespace: 'ns', timestamp: 1, values: { a: 1 } })
+    expect(cb).not.toHaveBeenCalled()
+  })
+
+  it('getLatest 返回 namespace 当前字段值', () => {
+    hub.append({ namespace: 'ns', timestamp: 1, values: { a: 1, b: 2 } })
+    hub.append({ namespace: 'ns', timestamp: 2, values: { a: 3 } })
+    expect(hub.getLatest({ namespace: 'ns' })).toEqual({ a: 3, b: 2 })
+  })
+
+  it('getRealtimeWindow 按 ms 截取', () => {
+    for (let t = 1; t <= 5; t++) {
+      hub.append({ namespace: 'ns', timestamp: t * 1000, values: { a: t } })
+    }
+    const w = hub.getRealtimeWindow({ namespace: 'ns' }, 2500)
+    expect(w.map(p => p.timestamp)).toEqual([3000, 4000, 5000])
+  })
+
+  it('只对 currentWorkspaceNamespace 触发兼容 emit', () => {
+    const ec = EventCenter.getInstance()
+    const cb = vi.fn()
+    ec.on(EventNames.DATA_UPDATE, cb)
+    hub.setCurrentWorkspaceNamespace('ns-current')
+
+    hub.append({ namespace: 'ns-current', timestamp: 1, values: { a: 1 } })
+    hub.append({ namespace: 'ns-other',   timestamp: 1, values: { a: 1 } })
+
+    expect(cb).toHaveBeenCalledOnce()
+    expect(cb).toHaveBeenCalledWith({ a: 1 })
+    ec.off(EventNames.DATA_UPDATE, cb)
+  })
+
+  it('校验 namespace 与 values', () => {
+    expect(() => hub.append({ namespace: '', timestamp: 1, values: { a: 1 } } as any))
+      .toThrow(/namespace/)
+    expect(() => hub.append({ namespace: 'ns', timestamp: 1, values: null as any }))
+      .toThrow(/values/)
+  })
+})
