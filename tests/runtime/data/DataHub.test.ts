@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { DataHub, initDataHub, getDataHub } from '@/runtime/data/DataHub'
 import { EventCenter, EventNames } from '@/utils/EventCenter'
+import type { HubTransport } from '@/runtime/transport/HubTransport'
 
 describe('DataHub basic', () => {
   let hub: DataHub
@@ -138,5 +139,58 @@ describe('DataHub basic', () => {
     off()
     hub.append({ namespace: 'ns-b', timestamp: 6, values: { b: 6 } })
     expect(cb).toHaveBeenCalledTimes(2)
+  })
+})
+
+describe('DataHub.attachTransport', () => {
+  function makeTransport(id: string): HubTransport & { sent: any[]; receive: (f: any) => void } {
+    let cb: ((f: any) => void) | null = null
+    const sent: any[] = []
+    return {
+      id,
+      start: async () => {},
+      stop: async () => {},
+      send: (f) => sent.push(f),
+      onFrame: (c) => { cb = c },
+      receive: (f) => cb?.(f),
+      sent
+    }
+  }
+
+  it('本地 append 广播给所有 transport', () => {
+    const hub = new DataHub({ origin: 'me', bufferCapacity: 50 })
+    const t1 = makeTransport('t1'); const t2 = makeTransport('t2')
+    hub.attachTransport(t1); hub.attachTransport(t2)
+    hub.append({ namespace: 'ns', timestamp: 1, values: { a: 1 } })
+    expect(t1.sent.length).toBe(1); expect(t2.sent.length).toBe(1)
+    expect(t1.sent[0].origin).toBe('me')
+  })
+
+  it('remote 帧不广播，避免回环', () => {
+    const hub = new DataHub({ origin: 'me', bufferCapacity: 50 })
+    const t = makeTransport('t')
+    hub.attachTransport(t)
+    hub.append({
+      namespace: 'ns', timestamp: 1, values: { a: 1 },
+      source: 'remote', origin: 'peer', seq: 1
+    })
+    expect(t.sent.length).toBe(0)
+  })
+
+  it('detachTransport 后停止广播', () => {
+    const hub = new DataHub({ origin: 'me', bufferCapacity: 50 })
+    const t = makeTransport('t')
+    hub.attachTransport(t)
+    hub.detachTransport(t)
+    hub.append({ namespace: 'ns', timestamp: 1, values: { a: 1 } })
+    expect(t.sent.length).toBe(0)
+  })
+
+  it('transport.onFrame 收帧 → hub append(remote)', () => {
+    const hub = new DataHub({ origin: 'me', bufferCapacity: 50 })
+    const t = makeTransport('t')
+    hub.attachTransport(t)
+    t.receive({ namespace: 'ns', timestamp: 1, values: { a: 1 }, source: 'remote', origin: 'peer', seq: 1 })
+    expect(hub.getLatest({ namespace: 'ns' })).toEqual({ a: 1 })
   })
 })

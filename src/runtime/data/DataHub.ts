@@ -3,6 +3,7 @@ import { EventCenter, EventNames } from '@/utils/EventCenter'
 import type {
   DataFrame, DataQuery, DataPoint, NamespaceOrigin, HistoryQuery
 } from './types'
+import type { HubTransport } from '@/runtime/transport/HubTransport'
 
 export interface DataHubOptions {
   origin: string
@@ -19,6 +20,8 @@ export class DataHub {
   private readonly namespaces = new Map<string, NamespaceStore>()
   private readonly subscribers = new Set<Subscriber>()
   private readonly namespaceOrigin = new Map<string, NamespaceOrigin>()
+  private readonly transports = new Set<HubTransport>()
+  private readonly transportById = new Map<string, HubTransport>()
 
   constructor(opts: DataHubOptions) {
     this.origin = opts.origin
@@ -70,6 +73,12 @@ export class DataHub {
     }
 
     this.getOrCreate(frame.namespace).apply(frame)
+
+    if (source === 'local') {
+      for (const t of this.transports) {
+        try { t.send(frame) } catch { /* swallow */ }
+      }
+    }
 
     for (const sub of this.subscribers) {
       if ((sub.query.namespace as any) === '*' || sub.query.namespace === frame.namespace) sub.cb(frame)
@@ -129,6 +138,20 @@ export class DataHub {
     return []
   }
 
+  attachTransport(t: HubTransport): void {
+    this.transports.add(t)
+    this.transportById.set(t.id, t)
+    t.onFrame((frame) => {
+      if (frame.origin === this.origin) return
+      this.append({ ...frame, source: 'remote' })
+    })
+  }
+
+  detachTransport(t: HubTransport): void {
+    this.transports.delete(t)
+    this.transportById.delete(t.id)
+  }
+
   getNamespaceOrigin(ns: string): NamespaceOrigin | undefined {
     return this.namespaceOrigin.get(ns)
   }
@@ -141,6 +164,8 @@ export class DataHub {
     this.subscribers.clear()
     this.namespaces.clear()
     this.namespaceOrigin.clear()
+    this.transports.clear()
+    this.transportById.clear()
   }
 }
 
