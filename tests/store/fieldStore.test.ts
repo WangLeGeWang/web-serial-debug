@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { initDataHub, getDataHub } from '@/runtime/data/DataHub'
 import { EventCenter, EventNames } from '@/utils/EventCenter'
-import { WorkspaceManager } from '@/utils/ProfileManager'
+import { WorkspaceManager, ProfileManagerInst } from '@/utils/ProfileManager'
 
 function resetWorkspaceManager(): void {
   ;(WorkspaceManager as any).instance = undefined
@@ -101,5 +101,26 @@ describe('fieldStore 直接从 DataHub.subscribeCurrent 拉数据（不经 Event
 
     getDataHub().append({ namespace: 'ns-x', timestamp: 1, values: { pitch: 88 } })
     expect(store.fields.find(f => f.key === 'pitch')?.value).not.toBe(88)
+  })
+
+  it('workspace.config.autoAddField=false 时不自动新增字段', async () => {
+    const { useFieldStore, bindFieldStoreToDataHub } = await import('@/store/fieldStore')
+    const store = useFieldStore()
+    store.loadFromProfile()
+
+    const ws = ProfileManagerInst.activeWorkspace
+    expect(ws).not.toBeNull()
+    ws!.config.autoAddField = false
+
+    dispose = bindFieldStoreToDataHub(store)
+
+    getDataHub().append({
+      namespace: 'ns-x',
+      timestamp: 1,
+      values: { pitch: 3.14, never_seen: 999 }
+    })
+
+    expect(store.fields.find(f => f.key === 'pitch')?.value).toBe(3.14)
+    expect(store.fields.find(f => f.key === 'never_seen')).toBeUndefined()
   })
 })

@@ -237,7 +237,8 @@ export function bindFieldStoreToDataHub(store: FieldStore): () => void {
     return () => {}
   }
   const off = hub.subscribeCurrent((frame) => {
-    store.handleDataUpdate(frame.values, true)
+    const autoAddField = ProfileManagerInst.activeWorkspace?.config?.autoAddField ?? true
+    store.handleDataUpdate(frame.values, autoAddField)
   })
   return off
 }
