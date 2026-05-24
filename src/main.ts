@@ -10,8 +10,56 @@ import App from './App.vue'
 import router from './router'
 // import { createRuntimeClient, RuntimeClientKey } from './runtime'
 import { setDataSourceProvider, createRealtimeProvider } from './utils/RealtimeProvider'
+import { initDataHub, getDataHub } from './runtime/data/DataHub'
+import { WorkspaceManagerInst, ensureWorkspaceNamespace } from './utils/ProfileManager'
+
+const PAGE_ORIGIN_KEY = 'wssd.pageOrigin'
+
+function resolvePageOrigin(): string {
+  try {
+    const existing = sessionStorage.getItem(PAGE_ORIGIN_KEY)
+    if (existing && existing.length > 0) return existing
+    const uuid = (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
+      ? crypto.randomUUID()
+      : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
+    const origin = `page-${uuid}`
+    sessionStorage.setItem(PAGE_ORIGIN_KEY, origin)
+    return origin
+  } catch {
+    return `page-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
+  }
+}
+
+function bootstrapDataHub(): void {
+  try {
+    const origin = resolvePageOrigin()
+    initDataHub({ origin, bufferCapacity: 50000 })
+
+    const syncCurrentNamespace = () => {
+      try {
+        const hub = getDataHub()
+        const ws = WorkspaceManagerInst.activeWorkspace
+        if (ws) {
+          ensureWorkspaceNamespace(ws)
+          hub.setCurrentWorkspaceNamespace(ws.config.namespace as string)
+        } else {
+          hub.setCurrentWorkspaceNamespace(null)
+        }
+      } catch (err) {
+        console.error('[DataHub] syncCurrentNamespace failed:', err)
+      }
+    }
+
+    syncCurrentNamespace()
+    WorkspaceManagerInst.onWorkspaceChange(() => syncCurrentNamespace())
+  } catch (err) {
+    console.error('[DataHub] bootstrap failed:', err)
+  }
+}
 
 async function bootstrap() {
+  bootstrapDataHub()
+
   const app = createApp(App)
   const pinia = createPinia()
   // const runtimeClient = await createRuntimeClient()
