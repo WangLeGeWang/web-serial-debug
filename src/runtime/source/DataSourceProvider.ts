@@ -18,52 +18,64 @@ export interface DataSourceProvider {
 
 const DEFAULT_WINDOW_MS = 30_000
 
+/**
+ * DataSourceProvider 注意事项：
+ * - realtime 模式不再本地累积 points，window 数据直接从 DataHub.getRealtimeWindow 取，
+ *   避免与 NamespaceStore.buffer 双重维护造成内存炸弹。订阅回调仅 ++ frameCounter 触发 computed。
+ * - DataPoint.values 仅含数值字段（与 NamespaceStore/RealtimeBuffer 一致），
+ *   非数值字段（string/boolean）请通过 DataHub.getLatest(query) 获取。
+ */
 export function createDataSource(
   initialQuery: DataQuery,
   initialMode: DataSourceMode = 'realtime'
 ): DataSourceProvider {
   let query: DataQuery = { ...initialQuery }
-  let mode: DataSourceMode = initialMode
-  let windowMs = DEFAULT_WINDOW_MS
-  let timeRange: [number, number] | null = null
+  const mode = ref<DataSourceMode>(initialMode)
+  const windowMs = ref<number>(DEFAULT_WINDOW_MS)
+  const timeRange = ref<[number, number] | null>(null)
   let unsub: (() => void) | null = null
 
-  const points = ref<DataPoint[]>([])
-  const fieldSet = ref<Set<string>>(new Set())
+  const historyPoints = ref<DataPoint[]>([])
+  const fieldArr = ref<string[]>([])
+  const frameCounter = ref(0)
+  const destroyed = ref(false)
+  let lastVisible: DataPoint[] = []
 
-  function applyFrame(frame: DataFrame): void {
-    const numeric: Record<string, number> = {}
+  function trackField(k: string): void {
+    if (!fieldArr.value.includes(k)) fieldArr.value.push(k)
+  }
+
+  function onFrame(frame: DataFrame): void {
     for (const [k, v] of Object.entries(frame.values)) {
-      if (typeof v === 'number') {
-        numeric[k] = v
-        fieldSet.value.add(k)
-      }
+      if (typeof v === 'number') trackField(k)
     }
-    if (Object.keys(numeric).length === 0) return
-    points.value.push({ timestamp: frame.timestamp, values: numeric })
+    frameCounter.value++
   }
 
   function reset(): void {
-    points.value = []
-    fieldSet.value = new Set()
+    historyPoints.value = []
+    fieldArr.value = []
+    frameCounter.value = 0
   }
 
   function startRealtime(): void {
     reset()
-    unsub = getDataHub().subscribe(query, applyFrame)
+    unsub = getDataHub().subscribe(query, onFrame)
   }
 
   function startHistory(): void {
     reset()
-    if (!timeRange) return
-    getDataHub().queryHistory({ ...query, timeRange })
+    if (!timeRange.value) return
+    getDataHub().queryHistory({ ...query, timeRange: timeRange.value })
       .then((res) => {
-        points.value = res
-        const fs = new Set<string>()
-        res.forEach((p) => Object.keys(p.values).forEach((k) => fs.add(k)))
-        fieldSet.value = fs
+        historyPoints.value = res
+        const seen: string[] = []
+        res.forEach((p) => Object.keys(p.values).forEach((k) => {
+          if (!seen.includes(k)) seen.push(k)
+        }))
+        fieldArr.value = seen
       })
-      .catch(() => { points.value = [] })
+      .catch(() => { historyPoints.value = [] })
   }
 
   function teardown(): void {
@@ -72,41 +84,43 @@ export function createDataSource(
 
   function init(): void {
     teardown()
-    if (mode === 'realtime') startRealtime()
-    else if (mode === 'history') startHistory()
+    if (mode.value === 'realtime') startRealtime()
+    else if (mode.value === 'history') startHistory()
     // 'playback' 在 Task 14 / PlaybackController 对接时实现
   }
 
   init()
 
   const visible = computed<DataPoint[]>(() => {
-    if (mode !== 'realtime') return points.value
-    if (points.value.length === 0) return []
-    const last = points.value[points.value.length - 1].timestamp
-    const from = last - windowMs
-    return points.value.filter((p) => p.timestamp >= from)
+    if (mode.value !== 'realtime') return historyPoints.value
+    // 依赖 frameCounter 触发重算；窗口数据由 DataHub 维护，避免重复累积。
+    // destroy 后冻结为最后一次值，对齐"unsub 后不再接收新帧"的语义。
+    void frameCounter.value
+    if (destroyed.value) return lastVisible
+    lastVisible = getDataHub().getRealtimeWindow(query, windowMs.value)
+    return lastVisible
   })
 
-  const fieldList = computed<string[]>(() => Array.from(fieldSet.value))
-
   const tr = computed<[number, number] | null>(() => {
-    if (mode === 'realtime') {
-      if (points.value.length === 0) return null
-      const last = points.value[points.value.length - 1].timestamp
-      return [last - windowMs, last]
+    if (mode.value === 'realtime') {
+      void frameCounter.value
+      const w = getDataHub().getRealtimeWindow(query, windowMs.value)
+      if (w.length === 0) return null
+      const last = w[w.length - 1].timestamp
+      return [last - windowMs.value, last]
     }
-    return timeRange
+    return timeRange.value
   })
 
   return {
-    get mode() { return mode },
+    get mode() { return mode.value },
     get visibleData() { return visible.value },
-    get fields() { return fieldList.value },
+    get fields() { return fieldArr.value },
     get timeRange() { return tr.value },
     setQuery(q) { query = { ...q }; init() },
-    setMode(m) { mode = m; init() },
-    setTimeRange(r) { timeRange = r; if (mode === 'history') init() },
-    setWindowDuration(ms) { windowMs = ms },
-    destroy() { teardown() }
+    setMode(m) { mode.value = m; init() },
+    setTimeRange(r) { timeRange.value = r; if (mode.value === 'history') init() },
+    setWindowDuration(ms) { windowMs.value = ms },
+    destroy() { teardown(); destroyed.value = true }
   }
 }

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { defineComponent, h, nextTick, createApp } from 'vue'
 import { initDataHub, getDataHub } from '@/runtime/data/DataHub'
 import { useDataSource } from '@/runtime/source/useDataSource'
@@ -64,5 +64,17 @@ describe('useDataSource composable', () => {
 
     getDataHub().append({ namespace: 'ns', timestamp: 2, values: { a: 2 } })
     expect(dsRef!.visibleData.length).toBe(1)
+  })
+
+  it('在非组件环境调用应 console.warn 但仍返回可用 ds（C1）', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const ds = useDataSource({ namespace: 'ns' }, 'realtime')
+    expect(ds).not.toBeNull()
+    expect(typeof ds.destroy).toBe('function')
+    expect(warnSpy).toHaveBeenCalled()
+    const msg = String(warnSpy.mock.calls[0]?.[0] ?? '')
+    expect(msg).toContain('useDataSource')
+    ds.destroy()
+    warnSpy.mockRestore()
   })
 })
