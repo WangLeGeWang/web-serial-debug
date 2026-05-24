@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, computed, nextTick, onMounted, onUnmounted } from 'vue'
+import { ref, watch, computed, nextTick, onMounted } from 'vue'
 import PlaybackControl from './PlaybackControl.vue'
 import DataSeriesManager from './DataSeriesManager.vue'
 import DashboardManager from './DashboardManager.vue'
@@ -9,7 +9,6 @@ import { useDark } from '@vueuse/core'
 import { GridLayout, GridItem } from 'grid-layout-plus'
 import { useDashboardStore, type Dashboard } from '@/store/dashboardStore'
 import { ProfileManagerInst } from '@/utils/ProfileManager'
-import { bindRealtimeProviderToDataHub } from './realtimeBinding'
 import type { CanvasConfig } from '../types'
 
 const showManager = ref(false)
@@ -326,18 +325,8 @@ watch(() => dashboardStore.dashboards, () => {
   persistDashboardsToProfile()
 }, { deep: true })
 
-let unbindRealtime: (() => void) | null = null
-
 onMounted(() => {
   loadDashboardsFromProfile()
-  unbindRealtime = bindRealtimeProviderToDataHub()
-})
-
-onUnmounted(() => {
-  if (unbindRealtime) {
-    unbindRealtime()
-    unbindRealtime = null
-  }
 })
 </script>
 

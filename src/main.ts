@@ -9,7 +9,6 @@ import 'markstream-vue/index.css'
 import App from './App.vue'
 import router from './router'
 // import { createRuntimeClient, RuntimeClientKey } from './runtime'
-import { setDataSourceProvider, createRealtimeProvider } from './utils/RealtimeProvider'
 import { initDataHub, getDataHub } from './runtime/data/DataHub'
 import { WorkspaceManagerInst, ensureWorkspaceNamespace } from './utils/ProfileManager'
 import { ScriptManager } from './utils/ScriptManager'
@@ -69,8 +68,6 @@ async function bootstrap() {
   const app = createApp(App)
   const pinia = createPinia()
   // const runtimeClient = await createRuntimeClient()
-
-  setDataSourceProvider(createRealtimeProvider())
 
   for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
     app.component(key, component)
