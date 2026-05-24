@@ -119,8 +119,12 @@ class WorkspaceManager {
     storage.set(ACTIVE_WORKSPACE_KEY, this.activeWorkspaceId.value)
   }
 
-  onWorkspaceChange(callback: (workspace: Workspace | null) => void): void {
+  onWorkspaceChange(callback: (workspace: Workspace | null) => void): () => void {
     this.workspaceChangeCallbacks.push(callback)
+    return () => {
+      const idx = this.workspaceChangeCallbacks.indexOf(callback)
+      if (idx >= 0) this.workspaceChangeCallbacks.splice(idx, 1)
+    }
   }
 
   private notifyWorkspaceChange(): void {
@@ -350,8 +354,8 @@ class WorkspaceManager {
     this.setActiveWorkspace(workspaceId)
   }
 
-  onProfileChange(callback: (workspace: Workspace | null) => void): void {
-    this.onWorkspaceChange(callback)
+  onProfileChange(callback: (workspace: Workspace | null) => void): () => void {
+    return this.onWorkspaceChange(callback)
   }
 }
 
