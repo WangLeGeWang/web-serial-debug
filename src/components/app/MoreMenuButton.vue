@@ -2,6 +2,9 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useDark, useToggle } from '@vueuse/core'
+import { ElMessage } from 'element-plus'
+import { isDesktop } from '../../utils/Platform'
+import { desktopApi } from '../../utils/desktopApi'
 
 const router = useRouter()
 const isDark = useDark({
@@ -10,6 +13,7 @@ const isDark = useDark({
 })
 const toggleDark = useToggle(isDark)
 const isFullscreen = ref(false)
+const desktop = isDesktop()
 
 const syncFullscreenState = () => {
   isFullscreen.value = Boolean(document.fullscreenElement)
@@ -29,6 +33,14 @@ const openHelpWindow = () => {
   window.open(route.href, '_blank', 'noopener,noreferrer')
 }
 
+const openNewAppWindow = async () => {
+  try {
+    await desktopApi.openNewWindow()
+  } catch (e) {
+    ElMessage.error('新建窗口失败：' + e)
+  }
+}
+
 const handleCommand = (command: string) => {
   if (command === 'theme') {
     toggleDark()
@@ -36,6 +48,10 @@ const handleCommand = (command: string) => {
   }
   if (command === 'fullscreen') {
     toggleFullscreen()
+    return
+  }
+  if (command === 'new-window') {
+    openNewAppWindow()
     return
   }
   if (command === 'help') {
@@ -62,6 +78,9 @@ onUnmounted(() => {
         </el-dropdown-item>
         <el-dropdown-item command="fullscreen" :icon="isFullscreen ? 'Aim' : 'FullScreen'">
           {{ isFullscreen ? '退出全屏' : '进入全屏' }}
+        </el-dropdown-item>
+        <el-dropdown-item v-if="desktop" command="new-window" icon="CopyDocument">
+          新建窗口
         </el-dropdown-item>
         <el-dropdown-item command="help" icon="QuestionFilled">帮助</el-dropdown-item>
       </el-dropdown-menu>

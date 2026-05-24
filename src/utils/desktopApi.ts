@@ -61,4 +61,6 @@ export const desktopApi = {
     invoke<QueryRecord[]>('query_data', { range }),
 
   getVersionInfo: () => invoke<VersionInfo>('get_version_info'),
+
+  openNewWindow: () => invoke<string>('open_new_window'),
 }

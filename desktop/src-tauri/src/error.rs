@@ -12,6 +12,8 @@ pub enum AppError {
     Influx(String),
     #[error("io error: {0}")]
     Io(#[from] std::io::Error),
+    #[error("window error: {0}")]
+    Window(String),
 }
 
 impl serde::Serialize for AppError {
