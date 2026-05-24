@@ -2,6 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useDataSeriesStore } from '../../store/dataSeriesStore'
+import { usePlaybackStore } from '../../store/playbackStore'
 import { useDataSourceFromPlaybackStore } from '@/runtime/source/useDataSourceFromPlaybackStore'
 
 const props = withDefaults(defineProps<{
@@ -16,6 +17,7 @@ const emit = defineEmits<{
 }>()
 
 const dataSeriesStore = useDataSeriesStore()
+const playbackStore = usePlaybackStore()
 const ds = useDataSourceFromPlaybackStore()
 
 const isSaving = ref(false)
@@ -78,7 +80,7 @@ async function handleSaveCurrentData() {
     const fields = [...currentFields.value]
 
     isSaving.value = true
-    await dataSeriesStore.saveSeries(name, points, fields)
+    await dataSeriesStore.saveSeries(name, points, fields, playbackStore.activeQuery.namespace)
     ElMessage.success(`已保存 ${points.length.toLocaleString()} 个数据点`)
   } catch (error) {
     if (error !== 'cancel' && error !== 'close') {

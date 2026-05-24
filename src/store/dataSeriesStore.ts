@@ -17,7 +17,7 @@ export const useDataSeriesStore = defineStore('dataSeries', () => {
     }
   }
 
-  async function saveSeries(name: string, points: DataPoint[], fields: string[]) {
+  async function saveSeries(name: string, points: DataPoint[], fields: string[], namespace: string) {
     if (points.length === 0) return
 
     const id = `series_${Date.now()}`
@@ -35,6 +35,7 @@ export const useDataSeriesStore = defineStore('dataSeries', () => {
 
     const series: DataSeries = {
       id,
+      namespace,
       name,
       startTime,
       endTime,

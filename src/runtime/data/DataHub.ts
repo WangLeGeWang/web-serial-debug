@@ -4,6 +4,8 @@ import type {
   DataFrame, DataQuery, DataPoint, NamespaceOrigin, HistoryQuery
 } from './types'
 import type { HubTransport } from '@/runtime/transport/HubTransport'
+import { dataSeriesStorage } from '@/utils/DataSeriesStorage'
+import { lttb } from '@/utils/lttb'
 
 export interface DataHubOptions {
   origin: string
@@ -132,9 +134,17 @@ export class DataHub {
     return s.buffer.windowByTime(windowMs)
   }
 
-  async queryHistory(_query: HistoryQuery): Promise<DataPoint[]> {
-    // 真正实现见 Task 17（HistoryStorage 路由）；现仅返回空集，
-    // 让 DataSourceProvider 的 history 模式在未接入存储前可工作。
+  async queryHistory(query: HistoryQuery): Promise<DataPoint[]> {
+    const origin = this.namespaceOrigin.get(query.namespace) ?? 'local'
+    if (origin === 'local') {
+      const raw = await dataSeriesStorage.queryByRange(query.namespace, query.timeRange)
+      return query.maxPoints && raw.length > query.maxPoints
+        ? lttb(raw, query.maxPoints)
+        : raw
+    }
+    const t = this.transportById.get(origin)
+    if (t?.queryHistory) return t.queryHistory(query)
+    console.warn('[DataHub] no transport for namespace', query.namespace)
     return []
   }
 
