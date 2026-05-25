@@ -79,13 +79,13 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted, reactive, ref } from 'vue'
+import { onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { ElButton, ElButtonGroup, ElColorPicker, ElDialog, ElForm, ElFormItem, ElInputNumber, ElOption, ElSelect } from 'element-plus'
 import { VueFlow, useVueFlow } from '@vue-flow/core'
 import { Background } from '@vue-flow/background'
 import { Controls } from '@vue-flow/controls'
 import { MiniMap } from '@vue-flow/minimap'
-import { EventCenter, EventNames } from '../../utils/EventCenter'
+import { useDataSourceFromPlaybackStore } from '@/runtime/source/useDataSourceFromPlaybackStore'
 import NodeConfigDialog from './pipeline/NodeConfigDialog.vue'
 import TankNode from './pipeline/nodes/TankNode.vue'
 import ValveNode from './pipeline/nodes/ValveNode.vue'
@@ -119,7 +119,6 @@ const {
   elements
 } = vueFlow
 
-const eventCenter = EventCenter.getInstance()
 const nodeConfigVisible = ref(false)
 const editingNode = ref<any>(null)
 const initialNodeType = ref<PipelineNodeType>('tank')
@@ -306,9 +305,13 @@ function setConfig(config: Record<string, any>) {
   updateUndoRedoState()
 }
 
-function handleDataUpdate(data: Record<string, unknown>) {
-  latestData.value = { ...latestData.value, ...data }
-}
+const ds = useDataSourceFromPlaybackStore()
+
+watch(() => ds.visibleData[ds.visibleData.length - 1], (latest) => {
+  if (latest) {
+    latestData.value = { ...latestData.value, ...latest.values }
+  }
+})
 
 function handleKeydown(e: KeyboardEvent) {
   if (!(e.metaKey || e.ctrlKey)) return
@@ -324,12 +327,10 @@ onMounted(() => {
     setNodes(demo.nodes)
     addEdges(demo.edges)
   }
-  eventCenter.on(EventNames.DATA_UPDATE, handleDataUpdate)
   window.addEventListener('keydown', handleKeydown)
 })
 
 onUnmounted(() => {
-  eventCenter.off(EventNames.DATA_UPDATE, handleDataUpdate)
   window.removeEventListener('keydown', handleKeydown)
 })
 

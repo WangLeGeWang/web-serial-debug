@@ -37,9 +37,8 @@ describe('fieldStore 直接从 DataHub.subscribeCurrent 拉数据（不经 Event
 
     dispose = bindFieldStoreToDataHub(store)
 
-    // 故意精确移除 DATA_UPDATE 的潜在监听者，断言 store 仍然更新——
-    // 证明数据路径是 DataHub.subscribeCurrent，而不是 EventCenter。
-    // 注意：用 spy 而不是 off(name) 无 callback 形式，避免破坏其他测试。
+    // 故意精确监控 DATA_UPDATE，断言 store 仍然更新且 EventCenter.emit 不再被触发——
+    // 证明数据路径是 DataHub.subscribeCurrent，且 DataHub.append 内部的 legacy emit 已彻底移除。
     const ec = EventCenter.getInstance()
     const emitSpy = vi.spyOn(ec, 'emit')
 
@@ -52,8 +51,9 @@ describe('fieldStore 直接从 DataHub.subscribeCurrent 拉数据（不经 Event
     expect(store.fields.find(f => f.key === 'pitch')?.value).toBe(12.5)
     expect(store.fields.find(f => f.key === 'brand_new')?.value).toBe(7)
 
-    // 兼容路径仍然 emit（验证 DataHub 没退化），但 store 的更新不依赖它。
-    expect(emitSpy).toHaveBeenCalledWith(EventNames.DATA_UPDATE, { pitch: 12.5, brand_new: 7 })
+    // legacy 兼容路径已彻底移除，DataHub.append 不应再触发 EventCenter.emit(DATA_UPDATE)。
+    const dataUpdateCalls = emitSpy.mock.calls.filter(args => args[0] === EventNames.DATA_UPDATE)
+    expect(dataUpdateCalls.length).toBe(0)
 
     emitSpy.mockRestore()
   })

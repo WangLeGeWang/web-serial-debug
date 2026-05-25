@@ -1,5 +1,4 @@
 import { NamespaceStore } from './NamespaceStore'
-import { EventCenter, EventNames } from '@/utils/EventCenter'
 import type {
   DataFrame, DataQuery, DataPoint, NamespaceOrigin, HistoryQuery, RecordingId
 } from './types'
@@ -127,12 +126,6 @@ export class DataHub {
 
     for (const sub of this.subscribers) {
       if ((sub.query.namespace as any) === '*' || sub.query.namespace === frame.namespace) sub.cb(frame)
-    }
-
-    // 兼容旧 EventCenter 订阅者：仅当 frame.namespace === currentWorkspaceNamespace 时
-    // emit 本帧的增量 values（不是累积快照）。新代码请走 DataHub.subscribe / getLatest。
-    if (this.currentWorkspaceNamespace && frame.namespace === this.currentWorkspaceNamespace) {
-      EventCenter.getInstance().emit(EventNames.DATA_UPDATE, frame.values)
     }
   }
 

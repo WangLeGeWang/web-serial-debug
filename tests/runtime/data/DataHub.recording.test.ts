@@ -119,24 +119,6 @@ describe('DataHub recording', () => {
     expect(ptsB.map(p => p.values.y)).toEqual([30])
   })
 
-  it('startRecording 不干扰旧 EventCenter.DATA_UPDATE 兼容路径', async () => {
-    const { initDataHub, getDataHub } = await import('@/runtime/data/DataHub')
-    const { EventCenter, EventNames } = await import('@/utils/EventCenter')
-    initDataHub({ origin: 'me', bufferCapacity: 1000 })
-    const hub = getDataHub()
-    const ec = EventCenter.getInstance()
-    const cb = vi.fn()
-    ec.on(EventNames.DATA_UPDATE, cb)
-    try {
-      hub.setCurrentWorkspaceNamespace('ns-rec')
-      hub.startRecording('ns-rec')
-      hub.append({ namespace: 'ns-rec', timestamp: 1, values: { a: 1 } })
-      expect(cb).toHaveBeenCalledWith({ a: 1 })
-    } finally {
-      ec.off(EventNames.DATA_UPDATE, cb)
-    }
-  })
-
   it('saveChunk 失败时 append 不抛错，stopRecording resolve 并记录 warn', async () => {
     const { initDataHub, getDataHub } = await import('@/runtime/data/DataHub')
     const { dataSeriesStorage } = await import('@/utils/DataSeriesStorage')

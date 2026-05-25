@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { DataHub, initDataHub, getDataHub } from '@/runtime/data/DataHub'
-import { EventCenter, EventNames } from '@/utils/EventCenter'
 import type { HubTransport } from '@/runtime/transport/HubTransport'
 
 describe('DataHub basic', () => {
@@ -57,20 +56,6 @@ describe('DataHub basic', () => {
     }
     const w = hub.getRealtimeWindow({ namespace: 'ns' }, 2500)
     expect(w.map(p => p.timestamp)).toEqual([3000, 4000, 5000])
-  })
-
-  it('只对 currentWorkspaceNamespace 触发兼容 emit', () => {
-    const ec = EventCenter.getInstance()
-    const cb = vi.fn()
-    ec.on(EventNames.DATA_UPDATE, cb)
-    hub.setCurrentWorkspaceNamespace('ns-current')
-
-    hub.append({ namespace: 'ns-current', timestamp: 1, values: { a: 1 } })
-    hub.append({ namespace: 'ns-other',   timestamp: 1, values: { a: 1 } })
-
-    expect(cb).toHaveBeenCalledOnce()
-    expect(cb).toHaveBeenCalledWith({ a: 1 })
-    ec.off(EventNames.DATA_UPDATE, cb)
   })
 
   it('校验 namespace 与 values', () => {

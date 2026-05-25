@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed, markRaw } from 'vue'
+import { ref, onMounted, onUnmounted, computed, markRaw, watch } from 'vue'
 
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
@@ -12,7 +12,7 @@ import Stats from 'stats.js'
 import particleFire from 'three-particle-fire';
 try { particleFire.install( { THREE: THREE } ); } catch (e) { }
 
-import { EventCenter, EventNames } from '../../utils/EventCenter'
+import { useDataSourceFromPlaybackStore } from '@/runtime/source/useDataSourceFromPlaybackStore'
 
 interface Props {
   readonly?: boolean
@@ -22,7 +22,7 @@ const props = withDefaults(defineProps<Props>(), {
   readonly: false
 })
 
-const eventCenter = EventCenter.getInstance()
+const ds = useDataSourceFromPlaybackStore()
 
 const container = ref<HTMLDivElement | null>(null)
 const pitch = ref(0)
@@ -342,6 +342,10 @@ const handleImuData = (data: any) => {
   yaw.value = y
 }
 
+watch(() => ds.visibleData[ds.visibleData.length - 1], (latest) => {
+  if (latest) handleImuData(latest.values)
+})
+
 const switchModel = () => {
   const models = ['arrow', 'cube', 'rocket']
   const currentIndex = models.indexOf(currentModel.value)
@@ -461,7 +465,6 @@ onMounted(() => {
   initScene()
   animate()
 
-  eventCenter.on(EventNames.DATA_UPDATE, handleImuData)
   window.addEventListener('resize', handleResize)
 })
 
@@ -470,7 +473,6 @@ onUnmounted(() => {
     cancelAnimationFrame(animationFrameId)
   }
   
-  eventCenter.off(EventNames.DATA_UPDATE, handleImuData)
   window.removeEventListener('resize', handleResize)
   
   if (renderer.value) {
