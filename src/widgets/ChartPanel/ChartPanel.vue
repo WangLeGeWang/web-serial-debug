@@ -1,33 +1,27 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useFieldStore } from '../../store/fieldStore'
 import LineChart from './LineChart.vue'
-import { EventCenter, EventNames } from '../../utils/EventCenter'
 import { ProfileManagerInst } from '../../utils/ProfileManager'
+import { useDataSourceFromPlaybackStore } from '@/runtime/source/useDataSourceFromPlaybackStore'
 
 interface Props {
   readonly?: boolean
 }
 
-const props = withDefaults(defineProps<Props>(), {
+withDefaults(defineProps<Props>(), {
   readonly: false
 })
 
-const emit = defineEmits<{
-  'update:charts': [charts: any[]]
-}>()
-
-const eventCenter = EventCenter.getInstance()
 const fieldStore = useFieldStore()
 const profileManager = ProfileManagerInst
+const ds = useDataSourceFromPlaybackStore()
 
 interface ChartConfig {
   id: number
   name: string
   fields: string[]
-  data: number[][]
-  timestamps: number[]
 }
 
 const chartConfig = computed(() => {
@@ -53,31 +47,43 @@ const localChartConfig = computed({
 })
 
 const charts = ref<ChartConfig[]>([])
-let nextChartId = computed(() => {
+const nextChartId = computed(() => {
   const maxId = charts.value.reduce((max, chart) => Math.max(max, chart.id), 0)
   return maxId + 1
+})
+
+const buildChartData = (fields: string[]): number[][] => {
+  const points = ds.visibleData
+  if (points.length === 0 || fields.length === 0) {
+    return [[0], ...fields.map(() => [0])]
+  }
+  const timestamps = points.map(p => p.timestamp / 1000)
+  const seriesData = fields.map(field =>
+    points.map(p => {
+      const v = p.values[field]
+      return typeof v === 'number' ? v : undefined as unknown as number
+    })
+  )
+  return [timestamps, ...seriesData]
+}
+
+const chartDataMap = computed<Record<number, number[][]>>(() => {
+  const map: Record<number, number[][]> = {}
+  for (const chart of charts.value) {
+    map[chart.id] = buildChartData(chart.fields)
+  }
+  return map
 })
 
 const createChart = (name: string) => {
   const chart: ChartConfig = {
     id: nextChartId.value,
     name,
-    fields: [],
-    data: [[]],
-    timestamps: []
+    fields: []
   }
   charts.value.push(chart)
   saveChartsConfig()
   return chart
-}
-
-const resetChartData = (chartId: number) => {
-  const chart = charts.value.find(c => c.id === chartId)
-  if (!chart) return
-
-  chart.data = [[]]
-  chart.timestamps = []
-  chart.fields.forEach(() => chart.data.push([]))
 }
 
 const saveChartsConfig = () => {
@@ -96,33 +102,7 @@ const loadChartsConfig = () => {
   config.forEach(chartData => {
     const chart = createChart(chartData.name)
     chart.id = chartData.id
-    chartData.fields.forEach(field => addField(chart.id, field))
-  })
-}
-
-const updateChartData = (data: any) => {
-  if (typeof data !== 'object' || data === null) return
-
-  const timestamp = Date.now()
-
-  charts.value.forEach(chart => {
-    if (chart.fields.length === 0) return
-
-    chart.timestamps.push(timestamp/1000)
-    let dataNum = 0
-    const newData = [chart.timestamps, ...chart.fields.map((field, index) => {
-      const value = data[field]
-      let d1: number | undefined = undefined
-      if (typeof value === 'number') {
-        dataNum++
-        d1 = value
-      }
-      chart.data[index + 1].push(d1 ?? undefined)
-      return chart.data[index + 1]
-    })]
-    if (dataNum == 0) return
-
-    chart.data = newData
+    chartData.fields.forEach((field: string) => addField(chart.id, field))
   })
 }
 
@@ -130,9 +110,7 @@ const handleTitleChange = () => {
   saveChartsConfig()
 }
 
-const handleFieldsChange = (chart: ChartConfig) => {
-  chart.data = [chart.timestamps]
-  chart.fields.forEach(() => chart.data.push([]))
+const handleFieldsChange = () => {
   saveChartsConfig()
 }
 
@@ -146,7 +124,6 @@ const addField = (chartId: number, field: string) => {
   }
 
   chart.fields.push(field)
-  chart.data.push([])
   saveChartsConfig()
 }
 
@@ -186,11 +163,6 @@ defineExpose({
 
 onMounted(() => {
   loadChartsConfig()
-  eventCenter.on(EventNames.DATA_UPDATE, updateChartData)
-})
-
-onUnmounted(() => {
-  eventCenter.off(EventNames.DATA_UPDATE, updateChartData)
 })
 </script>
 
@@ -220,7 +192,7 @@ onUnmounted(() => {
             size="small"
             style="min-width: 200px"
             :disabled="readonly"
-            @change="handleFieldsChange(chart)"
+            @change="handleFieldsChange()"
           >
             <el-option
               v-for="field in fieldStore.fields.map(f => f.key)"
@@ -238,20 +210,10 @@ onUnmounted(() => {
           >
             <el-icon><Delete /></el-icon>
           </el-button>
-          <el-button
-            v-if="!readonly"
-            @click="resetChartData(chart.id)"
-            style="margin-left: 0"
-            type="warning"
-            size="small"
-            circle
-          >
-            <el-icon><RefreshRight /></el-icon>
-          </el-button>
         </div>
         <div class="chart-content">
           <LineChart
-            :data="chart.data"
+            :data="chartDataMap[chart.id]"
             :fields="chart.fields"
           />
         </div>
