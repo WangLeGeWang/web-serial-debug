@@ -34,5 +34,6 @@ desktop/src-tauri/gen
 worktrees
 
 .trae
+.codex
 .vscode
 docs/superpowers

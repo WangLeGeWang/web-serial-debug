@@ -11,10 +11,12 @@ import ChartRocket from '@/widgets/ChartRocket/ChartRocket.vue'
 interface Props {
   type: string
   config?: Record<string, any>
+  readonly?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  config: () => ({})
+  config: () => ({}),
+  readonly: true
 })
 
 const componentMap: Record<string, any> = {
@@ -37,7 +39,7 @@ const widgetComponent = computed(() => {
     <component
       v-if="widgetComponent"
       :is="widgetComponent"
-      :readonly="true"
+      :readonly="props.readonly"
       v-bind="config"
     />
     <div v-else class="unknown-widget">

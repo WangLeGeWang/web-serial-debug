@@ -1,189 +1,64 @@
 <script setup lang="ts">
 import { ref, watch, computed, nextTick, onMounted } from 'vue'
-import PlaybackControl from './PlaybackControl.vue'
-import DataSeriesManager from './DataSeriesManager.vue'
-import DashboardManager from './DashboardManager.vue'
 import CanvasWidgetWrapper from './CanvasWidgetWrapper.vue'
 import CanvasItemConfigDialog from './CanvasItemConfigDialog.vue'
 import { useDark } from '@vueuse/core'
 import { GridLayout, GridItem } from 'grid-layout-plus'
-import { useDashboardStore, type Dashboard } from '@/store/dashboardStore'
+import { useDashboardStore, normalizeDashboards, saveItemToConfig, COMPONENT_CONFIGS, type Dashboard, type CanvasItem } from '@/store/dashboardStore'
 import { ProfileManagerInst } from '@/utils/ProfileManager'
 import type { CanvasConfig } from '../types'
 
-const showManager = ref(false)
-const playbackControlRef = ref<{ selectSeries: (seriesId: string) => Promise<void> } | null>(null)
+interface Props {
+  mode?: 'view' | 'edit'
+  dashboardId?: string
+  embedded?: boolean
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  mode: 'view',
+  dashboardId: '',
+  embedded: false
+})
 
 const profileManager = ProfileManagerInst
 const dashboardStore = useDashboardStore()
 const isDark = useDark()
-const canvasMode = ref<'view' | 'edit'>('view')
 
-const isEditing = computed(() => canvasMode.value === 'edit')
+const effectiveMode = computed(() => {
+  if (props.mode === 'edit') {
+    const targetId = props.dashboardId || dashboardStore.activeDashboardId
+    const dashboard = dashboardStore.dashboards.find(d => d.id === targetId)
+    return dashboard?.editable ? 'edit' : 'view'
+  }
+  return 'view'
+})
+
+const isEditing = computed(() => effectiveMode.value === 'edit')
+
+const currentDashboardId = computed(() => props.dashboardId || dashboardStore.activeDashboardId)
+
+const currentDashboard = computed(() => {
+  return dashboardStore.dashboards.find(d => d.id === currentDashboardId.value)
+})
+
+const isEmbedded = computed(() => props.embedded)
 
 const canvasConfig = computed(() => {
   const profile = profileManager.activeProfile
   return profile?.config?.canvas as CanvasConfig & {
-    dashboards?: SavedDashboard[]
+    dashboards?: any[]
     activeDashboardId?: string
   } | undefined
 })
 
-interface CanvasItem {
-  id: number
-  type: string
-  x: number
-  y: number
-  w: number
-  h: number
-  i: string
-  title?: string
-  resizable?: boolean
-  titleHidden?: boolean
-  config?: Record<string, any>
-}
-
-interface SavedCanvasItem {
-  id: number
-  type: string
-  x: number
-  y: number
-  width: number
-  height: number
-  title?: string
-  titleHidden?: boolean
-  config?: Record<string, any>
-}
-
-interface SavedDashboard {
-  id: string
-  name: string
-  items: SavedCanvasItem[]
-}
-
-interface ComponentConfig {
-  width: number
-  height: number
-  resizable: boolean
-  title: string
-}
-
-const componentConfigs = {
-  'chart': {
-    width: 8,
-    height: 6,
-    resizable: true,
-    title: 'uPlot图表'
-  },
-  'echarts-chart': {
-    width: 10,
-    height: 7,
-    resizable: true,
-    title: '高级图表'
-  },
-  'table': {
-    width: 8,
-    height: 6,
-    resizable: true,
-    title: '数据表'
-  },
-  '3d': {
-    width: 8,
-    height: 6,
-    resizable: true,
-    title: '3D视图'
-  },
-  'pipeline': {
-    width: 12,
-    height: 8,
-    resizable: true,
-    title: '流程图'
-  },
-  'sim': {
-    width: 12,
-    height: 8,
-    resizable: true,
-    title: '模拟发射'
-  },
-  'rocket': {
-    width: 12,
-    height: 8,
-    resizable: true,
-    title: '水火箭'
-  },
-  'row': {
-    width: 24,
-    height: 0.6,
-    resizable: false,
-    title: '行'
-  }
-} as Record<string, ComponentConfig>
-
 const items = ref<CanvasItem[]>([])
 let ignoreWatch = false
-
-const getDefaultTitle = (type: string) => {
-  return componentConfigs[type]?.title || '未命名'
-}
 
 const cloneItems = (sourceItems: CanvasItem[]) => {
   return sourceItems.map(item => ({
     ...item,
     config: { ...(item.config || {}) }
   }))
-}
-
-const loadItemFromConfig = (item: any): CanvasItem => {
-  const x = typeof item.x === 'number' ? Math.floor(item.x / 50) : 0
-  const y = typeof item.y === 'number' ? Math.floor(item.y / 50) : 0
-  const w = typeof item.width === 'number' ? Math.ceil(item.width / 50) : 4
-  const h = item.type === 'row'
-    ? componentConfigs.row.height
-    : typeof item.height === 'number' ? Math.ceil(item.height / 50) : 4
-
-  return {
-    id: item.id,
-    type: item.type,
-    x,
-    y,
-    w,
-    h,
-    i: item.id?.toString() || Math.random().toString(),
-    title: item.title || getDefaultTitle(item.type),
-    resizable: componentConfigs[item.type]?.resizable,
-    titleHidden: Boolean(item.titleHidden),
-    config: item.config || {}
-  }
-}
-
-const saveItemToConfig = (item: CanvasItem): SavedCanvasItem => ({
-  id: item.id,
-  type: item.type,
-  x: item.x * 50,
-  y: item.y * 50,
-  width: item.w * 50,
-  height: item.h * 50,
-  title: item.title,
-  titleHidden: Boolean(item.titleHidden),
-  config: item.config
-})
-
-const normalizeDashboards = () => {
-  const config = canvasConfig.value
-  if (config?.dashboards && Array.isArray(config.dashboards) && config.dashboards.length > 0) {
-    return config.dashboards.map(dashboard => ({
-      id: dashboard.id,
-      name: dashboard.name,
-      items: Array.isArray(dashboard.items) ? dashboard.items.map(loadItemFromConfig) : []
-    }))
-  }
-
-  const legacyItems = Array.isArray(config?.items) ? config.items : []
-  return [{
-    id: 'default',
-    name: '默认看板',
-    items: legacyItems.map(loadItemFromConfig)
-  }]
 }
 
 const persistDashboardsToProfile = () => {
@@ -194,7 +69,10 @@ const persistDashboardsToProfile = () => {
   const dashboards = dashboardStore.dashboards.map((dashboard: Dashboard) => ({
     id: dashboard.id,
     name: dashboard.name,
-    items: dashboard.items.map(saveItemToConfig)
+    items: dashboard.items.map(saveItemToConfig),
+    showInTab: dashboard.showInTab,
+    deletable: dashboard.deletable,
+    editable: dashboard.editable
   }))
 
   profileManager.updateProfile(profile.id, {
@@ -209,33 +87,29 @@ const persistDashboardsToProfile = () => {
   })
 }
 
-const syncItemsFromActiveDashboard = () => {
-  items.value = cloneItems(dashboardStore.activeDashboard?.items || [])
+const syncItemsFromCurrentDashboard = () => {
+  items.value = cloneItems(currentDashboard.value?.items || [])
   nextTick(handleResize)
-}
-
-const handleDataSeriesPlayback = async (seriesId: string) => {
-  await playbackControlRef.value?.selectSeries(seriesId)
-  showManager.value = false
 }
 
 const loadDashboardsFromProfile = () => {
   ignoreWatch = true
-  const dashboards = normalizeDashboards()
-  dashboardStore.setDashboards(dashboards as Dashboard[], canvasConfig.value?.activeDashboardId)
-  syncItemsFromActiveDashboard()
+  const dashboards = normalizeDashboards(canvasConfig.value)
+  dashboardStore.setDashboards(dashboards, canvasConfig.value?.activeDashboardId)
+  dashboardStore.initFixedDashboards()
+  syncItemsFromCurrentDashboard()
   nextTick(() => { ignoreWatch = false })
 }
 
 const saveLayout = () => {
-  dashboardStore.updateDashboardItems(dashboardStore.activeDashboardId, cloneItems(items.value))
+  dashboardStore.updateDashboardItems(currentDashboardId.value, cloneItems(items.value))
   persistDashboardsToProfile()
 }
 
 const addComponent = (type: string) => {
   if (!isEditing.value) return
   const id = Date.now()
-  const config = componentConfigs[type]
+  const config = COMPONENT_CONFIGS[type]
   const newItem: CanvasItem = {
     id,
     type,
@@ -311,28 +185,45 @@ const saveItemConfig = (updatedItem: any) => {
   }
 }
 
+watch(() => currentDashboardId.value, () => {
+  syncItemsFromCurrentDashboard()
+}, { immediate: true })
+
 watch(() => profileManager.activeProfile, () => {
+  if (isEmbedded.value) return
   loadDashboardsFromProfile()
 })
 
 watch(() => dashboardStore.activeDashboardId, () => {
   if (ignoreWatch) return
-  syncItemsFromActiveDashboard()
-  persistDashboardsToProfile()
+  if (!props.dashboardId) {
+    syncItemsFromCurrentDashboard()
+    persistDashboardsToProfile()
+  }
 })
 
 watch(() => dashboardStore.dashboards, () => {
+  if (isEmbedded.value) return
   persistDashboardsToProfile()
 }, { deep: true })
 
+watch(() => currentDashboard.value?.items, () => {
+  if (isEmbedded.value) {
+    syncItemsFromCurrentDashboard()
+  }
+}, { deep: true })
+
 onMounted(() => {
-  loadDashboardsFromProfile()
+  if (!isEmbedded.value) {
+    loadDashboardsFromProfile()
+  }
 })
+
 </script>
 
 <template>
   <div class="canvas-panel">
-    <div class="toolbar">
+    <div class="toolbar" v-if="effectiveMode === 'edit'">
       <div class="toolbar-left">
         <el-button-group v-if="isEditing" class="tool-group">
           <el-button type="primary" size="small" @click="addComponent('row')">添加行</el-button>
@@ -344,14 +235,6 @@ onMounted(() => {
           <el-button type="primary" size="small" @click="addComponent('sim')">模拟发射</el-button>
           <el-button type="primary" size="small" @click="addComponent('rocket')">水火箭</el-button>
         </el-button-group>
-      </div>
-      <div class="toolbar-right">
-        <PlaybackControl ref="playbackControlRef" @open-manager="showManager = true" />
-        <el-radio-group v-model="canvasMode" size="small">
-          <el-radio-button label="view">查看</el-radio-button>
-          <el-radio-button label="edit">编辑</el-radio-button>
-        </el-radio-group>
-        <DashboardManager />
       </div>
     </div>
     <div class="canvas-container" :class="{ 'dark': isDark, 'view-mode': !isEditing }">
@@ -413,7 +296,7 @@ onMounted(() => {
             </el-dropdown>
           </div>
           <div v-if="item.type !== 'row'" class="item-content">
-            <CanvasWidgetWrapper :type="item.type" :config="item.config" />
+            <CanvasWidgetWrapper :type="item.type" :config="item.config" :readonly="effectiveMode === 'edit'" />
           </div>
         </grid-item>
       </grid-layout>
@@ -423,12 +306,6 @@ onMounted(() => {
       v-model:visible="configDialogVisible"
       :item="configItem"
       @save="saveItemConfig"
-    />
-
-    <DataSeriesManager
-      :visible="showManager"
-      @close="showManager = false"
-      @playback="handleDataSeriesPlayback"
     />
   </div>
 </template>
@@ -450,6 +327,15 @@ onMounted(() => {
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
+}
+
+.toolbar-mini {
+  padding: 6px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  background: var(--el-bg-color-overlay);
+  border-bottom: 1px solid var(--el-border-color);
 }
 
 .toolbar-left {

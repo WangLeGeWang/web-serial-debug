@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import WorkbenchPage from '../pages/WorkbenchPage.vue'
 import HelpPage from '../pages/HelpPage.vue'
+import CanvasPage from '../pages/CanvasPage.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -14,6 +15,11 @@ const router = createRouter({
       path: '/help',
       name: 'help',
       component: HelpPage
+    },
+    {
+      path: '/canvas/:id',
+      name: 'canvas',
+      component: CanvasPage
     }
   ]
 })

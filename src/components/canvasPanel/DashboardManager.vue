@@ -47,6 +47,7 @@ const handleRename = (id: string, newName: string) => {
           >
             <div class="dashboard-item">
               <span>{{ dash.name }}</span>
+              <el-icon v-if="dash.showInTab" size="12" class="tab-icon"><promotion /></el-icon>
               <el-icon v-if="dash.id === activeId" class="check-icon"><check /></el-icon>
             </div>
           </el-dropdown-item>
@@ -87,5 +88,10 @@ const handleRename = (id: string, newName: string) => {
 .check-icon {
   color: var(--el-color-success);
   margin-left: 8px;
+}
+
+.tab-icon {
+  color: var(--el-color-primary);
+  margin-left: 4px;
 }
 </style>

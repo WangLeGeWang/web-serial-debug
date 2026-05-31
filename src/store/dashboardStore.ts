@@ -19,13 +19,217 @@ export interface Dashboard {
   id: string
   name: string
   items: CanvasItem[]
+  showInTab: boolean
+  deletable: boolean
+  editable: boolean
 }
+
+export interface SavedCanvasItem {
+  id: number
+  type: string
+  x: number
+  y: number
+  width: number
+  height: number
+  title?: string
+  titleHidden?: boolean
+  config?: Record<string, any>
+}
+
+export interface SavedDashboard {
+  id: string
+  name: string
+  items: SavedCanvasItem[]
+  showInTab?: boolean
+  deletable?: boolean
+  editable?: boolean
+}
+
+interface ComponentConfig {
+  width: number
+  height: number
+  resizable: boolean
+  title: string
+}
+
+export const COMPONENT_CONFIGS: Record<string, ComponentConfig> = {
+  'chart': { width: 8, height: 6, resizable: true, title: 'uPlot图表' },
+  'echarts-chart': { width: 10, height: 7, resizable: true, title: '高级图表' },
+  'table': { width: 8, height: 6, resizable: true, title: '数据表' },
+  '3d': { width: 8, height: 6, resizable: true, title: '3D视图' },
+  'pipeline': { width: 12, height: 8, resizable: true, title: '流程图' },
+  'sim': { width: 12, height: 8, resizable: true, title: '模拟发射' },
+  'rocket': { width: 12, height: 8, resizable: true, title: '水火箭' },
+  'row': { width: 24, height: 0.6, resizable: false, title: '行' }
+}
+
+export const loadItemFromConfig = (item: any): CanvasItem => {
+  const x = typeof item.x === 'number' ? Math.floor(item.x / 50) : 0
+  const y = typeof item.y === 'number' ? Math.floor(item.y / 50) : 0
+  const w = typeof item.width === 'number' ? Math.ceil(item.width / 50) : 4
+  const h = item.type === 'row'
+    ? COMPONENT_CONFIGS.row.height
+    : typeof item.height === 'number' ? Math.ceil(item.height / 50) : 4
+  return {
+    id: item.id,
+    type: item.type,
+    x,
+    y,
+    w,
+    h,
+    i: item.id?.toString() || Math.random().toString(),
+    title: item.title || COMPONENT_CONFIGS[item.type]?.title || '未命名',
+    resizable: COMPONENT_CONFIGS[item.type]?.resizable,
+    titleHidden: Boolean(item.titleHidden),
+    config: item.config || {}
+  }
+}
+
+export const normalizeDashboards = (canvasConfig: any): Dashboard[] => {
+  if (canvasConfig?.dashboards && Array.isArray(canvasConfig.dashboards) && canvasConfig.dashboards.length > 0) {
+    return canvasConfig.dashboards.map((dashboard: SavedDashboard) => ({
+      id: dashboard.id,
+      name: dashboard.name,
+      items: Array.isArray(dashboard.items) ? dashboard.items.map(loadItemFromConfig) : [],
+      showInTab: dashboard.showInTab ?? false,
+      deletable: dashboard.deletable ?? true,
+      editable: dashboard.editable ?? true
+    }))
+  }
+  const legacyItems = Array.isArray(canvasConfig?.items) ? canvasConfig.items : []
+  return [{
+    id: 'default',
+    name: '默认看板',
+    items: legacyItems.map(loadItemFromConfig),
+    showInTab: false,
+    deletable: true,
+    editable: true
+  }]
+}
+
+export const saveItemToConfig = (item: CanvasItem): SavedCanvasItem => ({
+  id: item.id,
+  type: item.type,
+  x: item.x * 50,
+  y: item.y * 50,
+  width: item.w * 50,
+  height: item.h * 50,
+  title: item.title,
+  titleHidden: Boolean(item.titleHidden),
+  config: item.config
+})
 
 const createDefaultDashboard = (): Dashboard => ({
   id: 'default',
   name: '默认看板',
-  items: []
+  items: [],
+  showInTab: false,
+  deletable: true,
+  editable: true
 })
+
+const FIXED_DASHBOARDS: Dashboard[] = [
+  {
+    id: 'fixed-3d',
+    name: '姿态',
+    items: [{
+      id: 1,
+      type: '3d',
+      x: 0,
+      y: 0,
+      w: 24,
+      h: 12,
+      i: '1',
+      title: '3D姿态',
+      resizable: true,
+      titleHidden: false,
+      config: {}
+    }],
+    showInTab: true,
+    deletable: false,
+    editable: false
+  },
+  {
+    id: 'fixed-chart',
+    name: '可视化',
+    items: [{
+      id: 2,
+      type: 'chart',
+      x: 0,
+      y: 0,
+      w: 24,
+      h: 12,
+      i: '2',
+      title: 'uPlot图表',
+      resizable: true,
+      titleHidden: false,
+      config: {}
+    }],
+    showInTab: true,
+    deletable: false,
+    editable: false
+  },
+  {
+    id: 'fixed-pipeline',
+    name: '流程图',
+    items: [{
+      id: 3,
+      type: 'pipeline',
+      x: 0,
+      y: 0,
+      w: 24,
+      h: 12,
+      i: '3',
+      title: '流程图',
+      resizable: true,
+      titleHidden: false,
+      config: {}
+    }],
+    showInTab: true,
+    deletable: false,
+    editable: false
+  },
+  {
+    id: 'fixed-sim',
+    name: '模拟发射',
+    items: [{
+      id: 4,
+      type: 'sim',
+      x: 0,
+      y: 0,
+      w: 24,
+      h: 12,
+      i: '4',
+      title: '模拟发射',
+      resizable: true,
+      titleHidden: false,
+      config: {}
+    }],
+    showInTab: true,
+    deletable: false,
+    editable: false
+  },
+  {
+    id: 'fixed-rocket',
+    name: '水火箭',
+    items: [{
+      id: 5,
+      type: 'rocket',
+      x: 0,
+      y: 0,
+      w: 24,
+      h: 12,
+      i: '5',
+      title: '水火箭',
+      resizable: true,
+      titleHidden: false,
+      config: {}
+    }],
+    showInTab: true,
+    deletable: false,
+    editable: false
+  }
+]
 
 export const useDashboardStore = defineStore('dashboard', () => {
   const dashboards = ref<Dashboard[]>([createDefaultDashboard()])
@@ -35,6 +239,14 @@ export const useDashboardStore = defineStore('dashboard', () => {
   const activeDashboard = computed(() => {
     return dashboards.value.find(d => d.id === activeDashboardId.value) || dashboards.value[0]
   })
+
+  const visibleDashboards = computed(() =>
+    dashboards.value.filter(d => d.showInTab)
+  )
+
+  const fixedDashboards = computed(() =>
+    dashboards.value.filter(d => !d.deletable)
+  )
 
   const setDashboards = (nextDashboards: Dashboard[], nextActiveDashboardId?: string) => {
     dashboards.value = nextDashboards.length > 0 ? nextDashboards : [createDefaultDashboard()]
@@ -47,13 +259,18 @@ export const useDashboardStore = defineStore('dashboard', () => {
     dashboards.value.push({
       id,
       name,
-      items: []
+      items: [],
+      showInTab: false,
+      deletable: true,
+      editable: true
     })
     activeDashboardId.value = id
     return id
   }
 
   const removeDashboard = (id: string) => {
+    const dashboard = dashboards.value.find(d => d.id === id)
+    if (!dashboard || !dashboard.deletable) return false
     if (dashboards.value.length <= 1) return false
     const index = dashboards.value.findIndex(d => d.id === id)
     if (index !== -1) {
@@ -81,20 +298,74 @@ export const useDashboardStore = defineStore('dashboard', () => {
 
   const renameDashboard = (id: string, name: string) => {
     const dashboard = dashboards.value.find(d => d.id === id)
-    if (dashboard) {
+    if (dashboard && dashboard.editable) {
       dashboard.name = name
     }
+  }
+
+  const initFixedDashboards = () => {
+    for (const fixed of FIXED_DASHBOARDS) {
+      const existing = dashboards.value.find(d => d.id === fixed.id)
+      if (!existing) {
+        dashboards.value.push({ ...fixed, items: fixed.items.map(item => ({ ...item, config: { ...(item.config || {}) } })) })
+      } else {
+        existing.deletable = fixed.deletable
+        existing.name = fixed.name
+      }
+    }
+  }
+
+  const toggleShowInTab = (id: string) => {
+    const dashboard = dashboards.value.find(d => d.id === id)
+    if (dashboard) {
+      dashboard.showInTab = !dashboard.showInTab
+    }
+  }
+
+  const toggleEditable = (id: string) => {
+    const dashboard = dashboards.value.find(d => d.id === id)
+    if (dashboard) {
+      dashboard.editable = !dashboard.editable
+    }
+  }
+
+  const copyDashboard = (id: string) => {
+    const source = dashboards.value.find(d => d.id === id)
+    if (!source) return null
+    const newId = `dashboard-${Date.now()}`
+    const newDashboard: Dashboard = {
+      id: newId,
+      name: `${source.name}(副本)`,
+      items: source.items.map(item => ({ ...item, config: { ...(item.config || {}) } })),
+      showInTab: false,
+      deletable: true,
+      editable: true
+    }
+    dashboards.value.push(newDashboard)
+    activeDashboardId.value = newId
+    return newId
+  }
+
+  const isFixedDashboard = (id: string) => {
+    return id.startsWith('fixed-')
   }
 
   return {
     dashboards,
     activeDashboardId,
     activeDashboard,
+    visibleDashboards,
+    fixedDashboards,
     setDashboards,
     addDashboard,
     removeDashboard,
+    renameDashboard,
     setActiveDashboard,
     updateDashboardItems,
-    renameDashboard
+    initFixedDashboards,
+    toggleShowInTab,
+    toggleEditable,
+    copyDashboard,
+    isFixedDashboard
   }
 })

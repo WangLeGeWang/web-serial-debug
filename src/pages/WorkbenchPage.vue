@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, onMounted, watch } from 'vue'
+import { computed, ref, onMounted, watch, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import SerialLog from '../components/SerialLog.vue'
 import PipelinePanel from '../widgets/PipelinePanel/PipelinePanel.vue'
@@ -11,11 +11,13 @@ import DataTable from '../components/DataTable.vue'
 import SerialQuickSend from '../components/SerialQuickSend.vue'
 import SerialScripts from '../components/SerialScript.vue'
 import CanvasPanel from '../components/canvasPanel/CanvasPanel.vue'
+import CanvasListPage from '../components/canvasPanel/CanvasListPage.vue'
 import AppShell from '../layouts/AppShell.vue'
 import { useWorkspaceConfig } from '../utils/useWorkspaceConfig'
-import { WorkspaceManagerInst } from '../utils/ProfileManager'
+import { WorkspaceManagerInst, ProfileManagerInst } from '../utils/ProfileManager'
 import { useDataStore } from '../store/fieldStore'
-import type { LayoutConfig } from '../components/types'
+import { useDashboardStore, normalizeDashboards, saveItemToConfig, type Dashboard } from '../store/dashboardStore'
+import type { LayoutConfig, CanvasConfig } from '../components/types'
 // @ts-ignore
 import { Splitpanes, Pane } from 'splitpanes'
 import 'splitpanes/dist/splitpanes.css'
@@ -23,10 +25,15 @@ import 'splitpanes/dist/splitpanes.css'
 const route = useRoute()
 const workspaceManager = WorkspaceManagerInst
 const dataStore = useDataStore()
+const dashboardStore = useDashboardStore()
+
+dashboardStore.initFixedDashboards()
+
+const visibleDashboards = computed(() => dashboardStore.visibleDashboards)
 
 const defaultLayoutConfig: LayoutConfig = {
   splitPaneSize: 100,
-  leftActiveTab: '0',
+  leftActiveTab: 'console',
   rightActiveTab: '0'
 }
 
@@ -43,6 +50,61 @@ const rightPaneSize = computed(() => 100 - leftPaneSize.value)
 watch(activeWorkspaceName, (name) => {
   document.title = name ? `${name} - BUS Studio` : 'BUS Studio'
 }, { immediate: true })
+
+const profileManager = ProfileManagerInst
+
+let ignoreWatch = false
+
+const canvasConfig = computed(() => {
+  const profile = profileManager.activeProfile
+  return profile?.config?.canvas as CanvasConfig & {
+    dashboards?: any[]
+    activeDashboardId?: string
+  } | undefined
+})
+
+const loadDashboardsFromProfile = () => {
+  ignoreWatch = true
+  const dashboards = normalizeDashboards(canvasConfig.value)
+  dashboardStore.setDashboards(dashboards, canvasConfig.value?.activeDashboardId)
+  dashboardStore.initFixedDashboards()
+  nextTick(() => { ignoreWatch = false })
+}
+
+const persistDashboardsToProfile = () => {
+  if (ignoreWatch) return
+  const profile = profileManager.activeProfile
+  if (!profile) return
+
+  const dashboards = dashboardStore.dashboards.map((dashboard: Dashboard) => ({
+    id: dashboard.id,
+    name: dashboard.name,
+    items: dashboard.items.map(saveItemToConfig),
+    showInTab: dashboard.showInTab,
+    deletable: dashboard.deletable,
+    editable: dashboard.editable
+  }))
+
+  profileManager.updateProfile(profile.id, {
+    config: {
+      ...profile.config,
+      canvas: {
+        dashboards,
+        activeDashboardId: dashboardStore.activeDashboardId,
+        items: dashboardStore.activeDashboard?.items.map(saveItemToConfig) || []
+      }
+    }
+  })
+}
+
+watch(() => dashboardStore.dashboards, () => {
+  if (ignoreWatch) return
+  persistDashboardsToProfile()
+}, { deep: true })
+
+watch(() => profileManager.activeProfile, () => {
+  loadDashboardsFromProfile()
+})
 
 watch(activeWorkspace, () => {
   dataStore.loadFromProfile()
@@ -84,29 +146,40 @@ handleResize()
     <Splitpanes class="workbench-splitpanes default-theme" :key="splitpanesKey" @resize="handleSplitResize">
       <Pane :size="leftPaneSize" class="w75">
         <el-tabs type="card" class="lv-card lv-tabs" addable v-model="localLayoutConfig.leftActiveTab" @tab-click="handleTabChange">
-          <el-tab-pane label="控制台">
+          <el-tab-pane label="控制台" name="console">
             <SerialLog />
           </el-tab-pane>
-          <el-tab-pane label="数据表" lazy>
+          <el-tab-pane label="数据表" name="datatable" lazy>
             <DataTable />
           </el-tab-pane>
-          <el-tab-pane label="姿态" lazy>
+          <el-tab-pane label="姿态" name="imu" lazy>
             <ChartIMU />
           </el-tab-pane>
-          <el-tab-pane label="可视化" lazy>
+          <el-tab-pane label="可视化" name="chart" lazy>
             <ChartPanel />
           </el-tab-pane>
-          <el-tab-pane label="流程图">
+          <el-tab-pane label="流程图" name="pipeline">
             <PipelinePanel />
           </el-tab-pane>
-          <el-tab-pane label="模拟发射" lazy>
+          <el-tab-pane label="模拟发射" name="sim" lazy>
             <Sim />
           </el-tab-pane>
-          <el-tab-pane label="水火箭" lazy>
+          <el-tab-pane label="水火箭" name="rocket" lazy>
             <ChartRocket />
           </el-tab-pane>
-          <el-tab-pane label="画板" lazy>
-            <CanvasPanel />
+
+          <el-tab-pane
+            v-for="db in visibleDashboards"
+            :key="db.id"
+            :label="db.name"
+            :name="`canvas-${db.id}`"
+            lazy
+          >
+            <CanvasPanel :dashboard-id="db.id" mode="view" :embedded="true" />
+          </el-tab-pane>
+
+          <el-tab-pane label="画布管理" name="canvas-list" lazy>
+            <CanvasListPage />
           </el-tab-pane>
         </el-tabs>
       </Pane>
@@ -150,5 +223,4 @@ handleResize()
 .splitpanes--vertical .splitpanes__pane {
   transition: none;
 }
-
 </style>
