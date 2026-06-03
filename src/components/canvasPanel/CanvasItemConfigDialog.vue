@@ -47,6 +47,10 @@ const getDefaultConfig = (type: string) => {
     chart: {
       selectedChartId: null,
       fields: [],
+      legendPlacement: 'right',
+      yRangeMode: 'auto',
+      yRangeMin: 0,
+      yRangeMax: 100,
       refreshRate: 100
     },
     'echarts-chart': {
@@ -101,6 +105,41 @@ const configSchema = computed(() => {
         label: '绑定字段',
         type: 'multiSelect',
         options: availableFields.value
+      },
+      {
+        key: 'legendPlacement',
+        label: '图例位置',
+        type: 'select',
+        options: [
+          { label: '右侧', value: 'right' },
+          { label: '底部', value: 'bottom' },
+          { label: '无', value: 'none' }
+        ]
+      },
+      {
+        key: 'yRangeMode',
+        label: 'Y轴范围',
+        type: 'select',
+        options: [
+          { label: '自动', value: 'auto' },
+          { label: '固定', value: 'fixed' }
+        ]
+      },
+      {
+        key: 'yRangeMin',
+        label: 'Y轴最小值',
+        type: 'number',
+        min: -999999,
+        max: 999999,
+        condition: { key: 'yRangeMode', value: 'fixed' }
+      },
+      {
+        key: 'yRangeMax',
+        label: 'Y轴最大值',
+        type: 'number',
+        min: -999999,
+        max: 999999,
+        condition: { key: 'yRangeMode', value: 'fixed' }
       }
     ],
     'echarts-chart': [
@@ -281,7 +320,10 @@ const handleSave = () => {
       <el-divider>组件配置</el-divider>
 
       <template v-for="schema in configSchema" :key="schema.key">
-        <el-form-item v-if="schema.type === 'select'" :label="schema.label">
+        <el-form-item
+          v-if="schema.type === 'select' && (!schema.condition || localItem.config[schema.condition.key] === schema.condition.value)"
+          :label="schema.label"
+        >
           <el-select v-model="localItem.config[schema.key]" placeholder="请选择">
             <el-option
               v-for="opt in schema.options"
@@ -292,7 +334,10 @@ const handleSave = () => {
           </el-select>
         </el-form-item>
 
-        <el-form-item v-else-if="schema.type === 'multiSelect'" :label="schema.label">
+        <el-form-item
+          v-else-if="schema.type === 'multiSelect' && (!schema.condition || localItem.config[schema.condition.key] === schema.condition.value)"
+          :label="schema.label"
+        >
           <el-select
             v-model="localItem.config[schema.key]"
             multiple
@@ -308,11 +353,17 @@ const handleSave = () => {
           </el-select>
         </el-form-item>
 
-        <el-form-item v-else-if="schema.type === 'switch'" :label="schema.label">
+        <el-form-item
+          v-else-if="schema.type === 'switch' && (!schema.condition || localItem.config[schema.condition.key] === schema.condition.value)"
+          :label="schema.label"
+        >
           <el-switch v-model="localItem.config[schema.key]" />
         </el-form-item>
 
-        <el-form-item v-else-if="schema.type === 'number'" :label="schema.label">
+        <el-form-item
+          v-else-if="schema.type === 'number' && (!schema.condition || localItem.config[schema.condition.key] === schema.condition.value)"
+          :label="schema.label"
+        >
           <el-input-number
             v-model="localItem.config[schema.key]"
             :min="schema.min"

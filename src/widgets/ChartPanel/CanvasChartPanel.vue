@@ -5,25 +5,30 @@ import { useDataSourceFromPlaybackStore } from '@/runtime/source/useDataSourceFr
 
 type LegendPlacement = 'bottom' | 'right' | 'none'
 
-interface YRangeConfig {
-  mode: 'auto' | 'fixed'
-  min?: number
-  max?: number
-}
-
 interface Props {
   fields?: string[]
   legendPlacement?: LegendPlacement
-  yRange?: YRangeConfig
+  yRangeMode?: 'auto' | 'fixed'
+  yRangeMin?: number
+  yRangeMax?: number
 }
 
 const props = withDefaults(defineProps<Props>(), {
   fields: () => [],
-  legendPlacement: 'bottom',
-  yRange: () => ({ mode: 'auto' })
+  legendPlacement: 'right',
+  yRangeMode: 'auto',
+  yRangeMin: 0,
+  yRangeMax: 100
 })
 
 const ds = useDataSourceFromPlaybackStore()
+
+const composedYRange = computed(() => {
+  if (props.yRangeMode === 'fixed') {
+    return { mode: 'fixed', min: props.yRangeMin, max: props.yRangeMax }
+  }
+  return { mode: 'auto' }
+})
 
 const chartFields = computed(() => {
   const points = ds.visibleData
@@ -66,7 +71,7 @@ watch(() => [ds.mode, ds.timeRange, ds.fields, ds.visibleData.length], () => {
       :data="chartData"
       :fields="chartFields"
       :legend-placement="legendPlacement"
-      :y-range="yRange"
+      :y-range="composedYRange"
       :height="300"
     />
   </div>

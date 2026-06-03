@@ -385,7 +385,6 @@ onUnmounted(() => {
   position: relative;
   background: var(--el-bg-color);
   border-radius: 4px;
-  overflow: hidden;
 }
 
 .chart-body--legend-bottom {
