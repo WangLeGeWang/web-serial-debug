@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useDataSourceFromPlaybackStore } from '@/runtime/source/useDataSourceFromPlaybackStore'
+import { widgetRegistry } from '@/widgets'
+import type { ConfigSchemaField } from '@/widgets/types'
 
 interface Props {
   visible: boolean
@@ -42,243 +44,36 @@ watch(() => props.item, (newItem) => {
   }
 }, { immediate: true })
 
-const getDefaultConfig = (type: string) => {
-  const defaults: Record<string, any> = {
-    chart: {
-      selectedChartId: null,
-      fields: [],
-      legendPlacement: 'right',
-      yRangeMode: 'auto',
-      yRangeMin: 0,
-      yRangeMax: 100,
-      refreshRate: 100
-    },
-    'echarts-chart': {
-      fields: [],
-      maxPoints: 10000,
-      refreshRate: 100,
-      sampling: 'lttb',
-      showArea: true,
-      showSymbol: false,
-      smooth: false,
-      lineWidth: 1.5
-    },
-    table: {
-      columns: [],
-      pageSize: 20
-    },
-    '3d': {
-      viewMode: 'perspective',
-      showGrid: true,
-      autoRotate: false
-    },
-    pipeline: {
-      selectedNode: null,
-      showMinimap: false
-    },
-    sim: {
-      timeScale: 1,
-      showTrail: true
-    },
-    rocket: {
-      showTrajectory: true,
-      cameraMode: 'follow'
-    }
+const getDefaultConfig = (type: string): Record<string, any> => {
+  const widgetDef = widgetRegistry[type]
+  if (widgetDef && widgetDef.defaultConfig) {
+    return { ...widgetDef.defaultConfig }
   }
-  return defaults[type] || {}
+  return {}
+}
+
+const resolveSchemaFields = (type: string): ConfigSchemaField[] => {
+  const widgetDef = widgetRegistry[type]
+  return widgetDef?.configSchema || []
 }
 
 const configSchema = computed(() => {
   if (!localItem.value) return []
-  
+
   const type = localItem.value.type
-  const schemas: Record<string, any[]> = {
-    chart: [
-      {
-        key: 'selectedChartId',
-        label: '选择图表',
-        type: 'select',
-        options: []
-      },
-      {
-        key: 'fields',
-        label: '绑定字段',
+  const rawSchema = resolveSchemaFields(type)
+
+  // 将 dynamicFields 类型替换为 multiSelect + 运行时 options
+  return rawSchema.map(field => {
+    if (field.type === 'dynamicFields') {
+      return {
+        ...field,
         type: 'multiSelect',
-        options: availableFields.value
-      },
-      {
-        key: 'legendPlacement',
-        label: '图例位置',
-        type: 'select',
-        options: [
-          { label: '右侧', value: 'right' },
-          { label: '底部', value: 'bottom' },
-          { label: '无', value: 'none' }
-        ]
-      },
-      {
-        key: 'yRangeMode',
-        label: 'Y轴范围',
-        type: 'select',
-        options: [
-          { label: '自动', value: 'auto' },
-          { label: '固定', value: 'fixed' }
-        ]
-      },
-      {
-        key: 'yRangeMin',
-        label: 'Y轴最小值',
-        type: 'number',
-        min: -999999,
-        max: 999999,
-        condition: { key: 'yRangeMode', value: 'fixed' }
-      },
-      {
-        key: 'yRangeMax',
-        label: 'Y轴最大值',
-        type: 'number',
-        min: -999999,
-        max: 999999,
-        condition: { key: 'yRangeMode', value: 'fixed' }
+        options: availableFields.value,
       }
-    ],
-    'echarts-chart': [
-      {
-        key: 'fields',
-        label: '绑定字段',
-        type: 'multiSelect',
-        options: availableFields.value
-      },
-      {
-        key: 'maxPoints',
-        label: '最大点数',
-        type: 'number',
-        min: 100,
-        max: 50000,
-        step: 100
-      },
-      {
-        key: 'refreshRate',
-        label: '刷新间隔',
-        type: 'number',
-        min: 16,
-        max: 5000,
-        step: 10
-      },
-      {
-        key: 'sampling',
-        label: '采样方式',
-        type: 'select',
-        options: [
-          { label: 'LTTB', value: 'lttb' },
-          { label: '平均值', value: 'average' },
-          { label: '最大值', value: 'max' },
-          { label: '最小值', value: 'min' },
-          { label: '不采样', value: 'none' }
-        ]
-      },
-      {
-        key: 'lineWidth',
-        label: '线宽',
-        type: 'number',
-        min: 0.5,
-        max: 5,
-        step: 0.5
-      },
-      {
-        key: 'showArea',
-        label: '面积填充',
-        type: 'switch'
-      },
-      {
-        key: 'showSymbol',
-        label: '显示点',
-        type: 'switch'
-      },
-      {
-        key: 'smooth',
-        label: '平滑曲线',
-        type: 'switch'
-      }
-    ],
-    table: [
-      {
-        key: 'columns',
-        label: '显示列',
-        type: 'multiSelect',
-        options: availableFields.value
-      },
-      {
-        key: 'pageSize',
-        label: '每页条数',
-        type: 'number',
-        min: 5,
-        max: 100
-      }
-    ],
-    '3d': [
-      {
-        key: 'viewMode',
-        label: '视图模式',
-        type: 'select',
-        options: [
-          { label: '透视', value: 'perspective' },
-          { label: '正交', value: 'orthographic' }
-        ]
-      },
-      {
-        key: 'showGrid',
-        label: '显示网格',
-        type: 'switch'
-      },
-      {
-        key: 'autoRotate',
-        label: '自动旋转',
-        type: 'switch'
-      }
-    ],
-    pipeline: [
-      {
-        key: 'showMinimap',
-        label: '显示小地图',
-        type: 'switch'
-      }
-    ],
-    sim: [
-      {
-        key: 'timeScale',
-        label: '时间缩放',
-        type: 'number',
-        min: 0.1,
-        max: 10,
-        step: 0.1
-      },
-      {
-        key: 'showTrail',
-        label: '显示轨迹',
-        type: 'switch'
-      }
-    ],
-    rocket: [
-      {
-        key: 'showTrajectory',
-        label: '显示轨迹',
-        type: 'switch'
-      },
-      {
-        key: 'cameraMode',
-        label: '相机模式',
-        type: 'select',
-        options: [
-          { label: '跟随', value: 'follow' },
-          { label: '固定', value: 'fixed' },
-          { label: '自由', value: 'free' }
-        ]
-      }
-    ]
-  }
-  
-  return schemas[type] || []
+    }
+    return field
+  })
 })
 
 const handleClose = () => {

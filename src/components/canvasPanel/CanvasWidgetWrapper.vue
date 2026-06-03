@@ -1,12 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import CanvasChartPanel from '../../widgets/ChartPanel/CanvasChartPanel.vue'
-import EChartsTimeSeries from '../../widgets/EChartsTimeSeries/EChartsTimeSeries.vue'
-import DataTable from '../DataTable.vue'
-import ChartIMU from '@/widgets/ChartIMU/ChartIMU.vue'
-import PipelinePanel from '@/widgets/PipelinePanel/PipelinePanel.vue'
-import Sim from '@/widgets/Sim/Sim.vue'
-import ChartRocket from '@/widgets/ChartRocket/ChartRocket.vue'
+import { widgetRegistry } from '@/widgets'
 
 interface Props {
   type: string
@@ -19,18 +13,10 @@ const props = withDefaults(defineProps<Props>(), {
   readonly: true
 })
 
-const componentMap: Record<string, any> = {
-  'chart': CanvasChartPanel,
-  'echarts-chart': EChartsTimeSeries,
-  'table': DataTable,
-  '3d': ChartIMU,
-  'pipeline': PipelinePanel,
-  'sim': Sim,
-  'rocket': ChartRocket
-}
-
 const widgetComponent = computed(() => {
-  return componentMap[props.type] || null
+  const def = widgetRegistry[props.type]
+  if (!def) return null
+  return def.canvasComponent ?? def.component
 })
 </script>
 

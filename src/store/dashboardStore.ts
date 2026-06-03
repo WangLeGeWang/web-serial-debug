@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { widgetRegistry } from '@/widgets'
 
 export interface CanvasItem {
   id: number
@@ -52,24 +53,31 @@ interface ComponentConfig {
   title: string
 }
 
-export const COMPONENT_CONFIGS: Record<string, ComponentConfig> = {
-  'chart': { width: 8, height: 6, resizable: true, title: 'uPlot图表' },
-  'echarts-chart': { width: 10, height: 7, resizable: true, title: '高级图表' },
-  'table': { width: 8, height: 6, resizable: true, title: '数据表' },
-  '3d': { width: 8, height: 6, resizable: true, title: '3D视图' },
-  'pipeline': { width: 12, height: 8, resizable: true, title: '流程图' },
-  'sim': { width: 12, height: 8, resizable: true, title: '模拟发射' },
-  'rocket': { width: 12, height: 8, resizable: true, title: '水火箭' },
-  'row': { width: 24, height: 0.6, resizable: false, title: '行' }
-}
+// row 是布局概念，不属于 widget，单独定义
+const ROW_CONFIG: ComponentConfig = { width: 24, height: 0.6, resizable: false, title: '行' }
+
+// 从 widgetRegistry 派生 COMPONENT_CONFIGS，row 作为特殊布局项单独保留
+export const COMPONENT_CONFIGS: Record<string, ComponentConfig> = computed(() => {
+  const configs: Record<string, ComponentConfig> = { row: ROW_CONFIG }
+  for (const [key, def] of Object.entries(widgetRegistry)) {
+    configs[key] = {
+      width: def.defaultWidth,
+      height: def.defaultHeight,
+      resizable: def.resizable ?? true,
+      title: def.name,
+    }
+  }
+  return configs
+}).value
 
 export const loadItemFromConfig = (item: any): CanvasItem => {
   const x = typeof item.x === 'number' ? Math.floor(item.x / 50) : 0
   const y = typeof item.y === 'number' ? Math.floor(item.y / 50) : 0
   const w = typeof item.width === 'number' ? Math.ceil(item.width / 50) : 4
   const h = item.type === 'row'
-    ? COMPONENT_CONFIGS.row.height
+    ? ROW_CONFIG.height
     : typeof item.height === 'number' ? Math.ceil(item.height / 50) : 4
+  const widgetDef = widgetRegistry[item.type]
   return {
     id: item.id,
     type: item.type,
@@ -78,8 +86,8 @@ export const loadItemFromConfig = (item: any): CanvasItem => {
     w,
     h,
     i: item.id?.toString() || Math.random().toString(),
-    title: item.title || COMPONENT_CONFIGS[item.type]?.title || '未命名',
-    resizable: COMPONENT_CONFIGS[item.type]?.resizable,
+    title: item.title || widgetDef?.name || COMPONENT_CONFIGS[item.type]?.title || '未命名',
+    resizable: widgetDef?.resizable ?? COMPONENT_CONFIGS[item.type]?.resizable,
     titleHidden: Boolean(item.titleHidden),
     config: item.config || {}
   }
@@ -140,7 +148,7 @@ const FIXED_DASHBOARDS: Dashboard[] = [
       w: 24,
       h: 12,
       i: '1',
-      title: '3D姿态',
+      title: '3D视图',
       resizable: true,
       titleHidden: false,
       config: {}
