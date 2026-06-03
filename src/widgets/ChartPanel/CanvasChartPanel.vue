@@ -3,12 +3,24 @@ import { computed, watch, ref } from 'vue'
 import LineChart from './LineChart.vue'
 import { useDataSourceFromPlaybackStore } from '@/runtime/source/useDataSourceFromPlaybackStore'
 
+type LegendPlacement = 'bottom' | 'right' | 'none'
+
+interface YRangeConfig {
+  mode: 'auto' | 'fixed'
+  min?: number
+  max?: number
+}
+
 interface Props {
   fields?: string[]
+  legendPlacement?: LegendPlacement
+  yRange?: YRangeConfig
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  fields: () => []
+  fields: () => [],
+  legendPlacement: 'bottom',
+  yRange: () => ({ mode: 'auto' })
 })
 
 const ds = useDataSourceFromPlaybackStore()
@@ -53,6 +65,9 @@ watch(() => [ds.mode, ds.timeRange, ds.fields, ds.visibleData.length], () => {
       :key="key"
       :data="chartData"
       :fields="chartFields"
+      :legend-placement="legendPlacement"
+      :y-range="yRange"
+      :height="300"
     />
   </div>
 </template>

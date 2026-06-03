@@ -6,6 +6,22 @@ import LineChart from './LineChart.vue'
 import { ProfileManagerInst } from '../../utils/ProfileManager'
 import { useDataSourceFromPlaybackStore } from '@/runtime/source/useDataSourceFromPlaybackStore'
 
+type LegendPlacement = 'bottom' | 'right' | 'none'
+
+interface YRangeConfig {
+  mode: 'auto' | 'fixed'
+  min?: number
+  max?: number
+}
+
+interface ChartConfig {
+  id: number
+  name: string
+  fields: string[]
+  legendPlacement: LegendPlacement
+  yRange: YRangeConfig
+}
+
 interface Props {
   readonly?: boolean
 }
@@ -17,12 +33,6 @@ withDefaults(defineProps<Props>(), {
 const fieldStore = useFieldStore()
 const profileManager = ProfileManagerInst
 const ds = useDataSourceFromPlaybackStore()
-
-interface ChartConfig {
-  id: number
-  name: string
-  fields: string[]
-}
 
 const chartConfig = computed(() => {
   const profile = profileManager.activeProfile
@@ -52,6 +62,12 @@ const nextChartId = computed(() => {
   return maxId + 1
 })
 
+const legendPlacementOptions: { label: string; value: LegendPlacement }[] = [
+  { label: '底部', value: 'bottom' },
+  { label: '右侧', value: 'right' },
+  { label: '无', value: 'none' },
+]
+
 const buildChartData = (fields: string[]): number[][] => {
   const points = ds.visibleData
   if (points.length === 0 || fields.length === 0) {
@@ -75,11 +91,13 @@ const chartDataMap = computed<Record<number, number[][]>>(() => {
   return map
 })
 
-const createChart = (name: string) => {
+const createChart = (name: string): ChartConfig => {
   const chart: ChartConfig = {
     id: nextChartId.value,
     name,
-    fields: []
+    fields: [],
+    legendPlacement: 'right',
+    yRange: { mode: 'auto' },
   }
   charts.value.push(chart)
   saveChartsConfig()
@@ -90,7 +108,9 @@ const saveChartsConfig = () => {
   const config = charts.value.map(chart => ({
     id: chart.id,
     name: chart.name,
-    fields: chart.fields
+    fields: chart.fields,
+    legendPlacement: chart.legendPlacement,
+    yRange: chart.yRange,
   }))
   localChartConfig.value = { list: config }
 }
@@ -102,6 +122,8 @@ const loadChartsConfig = () => {
   config.forEach(chartData => {
     const chart = createChart(chartData.name)
     chart.id = chartData.id
+    chart.legendPlacement = chartData.legendPlacement || 'bottom'
+    chart.yRange = chartData.yRange || { mode: 'auto' }
     chartData.fields.forEach((field: string) => addField(chart.id, field))
   })
 }
@@ -111,6 +133,14 @@ const handleTitleChange = () => {
 }
 
 const handleFieldsChange = () => {
+  saveChartsConfig()
+}
+
+const handleLegendPlacementChange = () => {
+  saveChartsConfig()
+}
+
+const handleYRangeChange = () => {
   saveChartsConfig()
 }
 
@@ -140,7 +170,9 @@ const getConfig = () => {
     charts: charts.value.map(chart => ({
       id: chart.id,
       name: chart.name,
-      fields: chart.fields
+      fields: chart.fields,
+      legendPlacement: chart.legendPlacement,
+      yRange: chart.yRange,
     }))
   }
 }
@@ -151,6 +183,8 @@ const setConfig = (config: Record<string, any>) => {
     config.charts.forEach((chartData: any) => {
       const chart = createChart(chartData.name)
       chart.id = chartData.id
+      chart.legendPlacement = chartData.legendPlacement || 'bottom'
+      chart.yRange = chartData.yRange || { mode: 'auto' }
       chartData.fields?.forEach((field: string) => addField(chart.id, field))
     })
   }
@@ -190,7 +224,7 @@ onMounted(() => {
             filterable
             placeholder="选择字段"
             size="small"
-            style="min-width: 200px"
+            class="chart-fields-select"
             :disabled="readonly"
             @change="handleFieldsChange()"
           >
@@ -201,6 +235,48 @@ onMounted(() => {
               :value="field"
             />
           </el-select>
+          <el-select
+            v-model="chart.legendPlacement"
+            size="small"
+            class="chart-legend-select"
+            :disabled="readonly"
+            @change="handleLegendPlacementChange()"
+          >
+            <el-option
+              v-for="opt in legendPlacementOptions"
+              :key="opt.value"
+              :label="opt.label"
+              :value="opt.value"
+            />
+          </el-select>
+          <el-select
+            v-model="chart.yRange.mode"
+            size="small"
+            class="chart-yrange-select"
+            :disabled="readonly"
+            @change="handleYRangeChange()"
+          >
+            <el-option label="自动" value="auto" />
+            <el-option label="固定" value="fixed" />
+          </el-select>
+          <template v-if="chart.yRange.mode === 'fixed'">
+            <el-input-number
+              v-model="chart.yRange.min"
+              size="small"
+              controls-position="right"
+              class="chart-yrange-input"
+              :disabled="readonly"
+              @change="handleYRangeChange()"
+            />
+            <el-input-number
+              v-model="chart.yRange.max"
+              size="small"
+              controls-position="right"
+              class="chart-yrange-input"
+              :disabled="readonly"
+              @change="handleYRangeChange()"
+            />
+          </template>
           <el-button
             v-if="!readonly"
             @click="removeChart(chart.id)"
@@ -215,6 +291,8 @@ onMounted(() => {
           <LineChart
             :data="chartDataMap[chart.id]"
             :fields="chart.fields"
+            :legend-placement="chart.legendPlacement"
+            :y-range="chart.yRange"
           />
         </div>
       </div>
@@ -231,37 +309,51 @@ onMounted(() => {
 }
 
 .chart-controls {
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 .charts-container {
   flex: 1;
+  overflow-y: auto;
 }
 
 .chart-item {
   background: var(--el-bg-color);
-  border-radius: 8px;
-  padding: 16px;
-  margin-bottom: 16px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+  padding: 12px;
+  margin-bottom: 12px;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
 }
 
 .chart-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 16px;
+  gap: 6px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
 }
 
 .chart-name-input {
-  max-width: 200px;
+  max-width: 140px;
+}
+
+.chart-fields-select {
+  min-width: 160px;
+}
+
+.chart-legend-select {
+  width: 80px;
+}
+
+.chart-yrange-select {
+  width: 80px;
+}
+
+.chart-yrange-input {
+  width: 90px;
 }
 
 .chart-content {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding-bottom: 20px;
   height: 300px;
 }
 </style>
