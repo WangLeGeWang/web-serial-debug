@@ -2,11 +2,6 @@
 import { computed, ref, onMounted, watch, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import SerialLog from '../components/SerialLog.vue'
-import PipelinePanel from '../widgets/PipelinePanel/PipelinePanel.vue'
-import ChartIMU from '../widgets/ChartIMU/ChartIMU.vue'
-import ChartRocket from '../widgets/ChartRocket/ChartRocket.vue'
-import Sim from '../widgets/Sim/Sim.vue'
-import ChartPanel from '../widgets/ChartPanel/ChartPanel.vue'
 import DataTable from '../components/DataTable.vue'
 import SerialQuickSend from '../components/SerialQuickSend.vue'
 import SerialScripts from '../components/SerialScript.vue'
@@ -151,21 +146,6 @@ handleResize()
           </el-tab-pane>
           <el-tab-pane label="数据表" name="datatable" lazy>
             <DataTable />
-          </el-tab-pane>
-          <el-tab-pane label="姿态" name="imu" lazy>
-            <ChartIMU />
-          </el-tab-pane>
-          <el-tab-pane label="可视化" name="chart" lazy>
-            <ChartPanel />
-          </el-tab-pane>
-          <el-tab-pane label="流程图" name="pipeline">
-            <PipelinePanel />
-          </el-tab-pane>
-          <el-tab-pane label="模拟发射" name="sim" lazy>
-            <Sim />
-          </el-tab-pane>
-          <el-tab-pane label="水火箭" name="rocket" lazy>
-            <ChartRocket />
           </el-tab-pane>
 
           <el-tab-pane

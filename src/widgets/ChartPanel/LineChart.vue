@@ -23,12 +23,22 @@ interface Props {
   fields: string[]
   height?: number
   legendPlacement?: 'bottom' | 'right' | 'none'
+  legendWidthPercent?: number
+  legendColumns?: number[]
+  lineWidth?: number
+  showPoints?: boolean
+  smooth?: boolean
   yRange?: YRangeConfig
 }
 
 const props = withDefaults(defineProps<Props>(), {
   height: 300,
   legendPlacement: 'right',
+  legendWidthPercent: 25,
+  legendColumns: () => [0, 1, 2, 3],
+  lineWidth: 1.5,
+  showPoints: true,
+  smooth: false,
   yRange: () => ({ mode: 'auto' })
 })
 
@@ -232,8 +242,9 @@ const initUplot = () => {
       ...props.fields.map((field, i) => ({
         label: field,
         stroke: theme.lineColors[i % theme.lineColors.length],
-        width: 1.5,
-        points: { show: true, size: 4 },
+        width: props.lineWidth,
+        points: { show: props.showPoints, size: 4 },
+        smooth: props.smooth ? 0.3 : undefined as number | undefined,
       }))
     ],
     axes: [
@@ -289,6 +300,8 @@ const handleResize = () => {
   }
 }
 
+let resizeObserver: ResizeObserver | null = null
+
 watch(() => props.data, (newData) => {
   if (chart.value) {
     chart.value.setData(effectiveData.value as any)
@@ -313,13 +326,48 @@ watch(() => props.yRange, () => {
   initUplot()
 }, { deep: true })
 
+watch(() => props.lineWidth, () => {
+  if (chart.value) {
+    chart.value.destroy()
+    chart.value = null
+  }
+  tooltipState.visible = false
+  initUplot()
+})
+
+watch(() => props.showPoints, () => {
+  if (chart.value) {
+    chart.value.destroy()
+    chart.value = null
+  }
+  tooltipState.visible = false
+  initUplot()
+})
+
+watch(() => props.smooth, () => {
+  if (chart.value) {
+    chart.value.destroy()
+    chart.value = null
+  }
+  tooltipState.visible = false
+  initUplot()
+})
+
 onMounted(() => {
   initUplot()
   window.addEventListener('resize', handleResize)
+  // ResizeObserver 直接监听容器 DOM 元素，精确感知 grid-layout 内的 resize
+  if (container.value) {
+    resizeObserver = new ResizeObserver(() => {
+      handleResize()
+    })
+    resizeObserver.observe(container.value)
+  }
 })
 
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
+  resizeObserver?.disconnect()
   if (chart.value) {
     chart.value.destroy()
   }
@@ -374,6 +422,8 @@ onUnmounted(() => {
         :fields="fields"
         :line-colors="currentTheme.lineColors"
         :placement="legendPlacement"
+        :width-percent="legendWidthPercent"
+        :visible-columns="legendColumns"
       />
     </div>
   </div>

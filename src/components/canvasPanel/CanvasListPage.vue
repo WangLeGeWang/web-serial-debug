@@ -2,9 +2,11 @@
 import { computed, ref } from 'vue'
 import { useDashboardStore } from '@/store/dashboardStore'
 import { useRouter } from 'vue-router'
+import { WorkspaceManagerInst } from '@/utils/ProfileManager'
 
 const dashboardStore = useDashboardStore()
 const router = useRouter()
+const workspaceManager = WorkspaceManagerInst
 
 const dashboards = computed(() => dashboardStore.dashboards)
 
@@ -21,7 +23,8 @@ const handleDelete = (id: string) => {
 }
 
 const resolveCanvasUrl = (id: string, mode: string) => {
-  return router.resolve({ name: 'canvas', params: { id }, query: { mode } }).href
+  const workspaceId = workspaceManager.activeWorkspaceIdRef.value
+  return router.resolve({ name: 'canvas', params: { id }, query: { mode, workspace: workspaceId || undefined } }).href
 }
 
 const handleOpenEdit = (id: string) => {

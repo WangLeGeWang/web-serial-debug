@@ -5,10 +5,12 @@ import CanvasPanel from '../components/canvasPanel/CanvasPanel.vue'
 import PlaybackControl from '../components/canvasPanel/PlaybackControl.vue'
 import DataSeriesManager from '../components/canvasPanel/DataSeriesManager.vue'
 import { useDashboardStore } from '../store/dashboardStore'
+import { WorkspaceManagerInst } from '../utils/ProfileManager'
 
 const route = useRoute()
 const router = useRouter()
 const dashboardStore = useDashboardStore()
+const workspaceManager = WorkspaceManagerInst
 
 const showManager = ref(false)
 const isRenaming = ref(false)
@@ -67,6 +69,15 @@ onMounted(() => {
     window.dispatchEvent(new Event('resize'))
   }, 200)
 })
+
+// 在 setup 阶段立即恢复 workspace — 确保子组件 CanvasPanel mount 时 workspace 已正确
+const workspaceIdFromUrl = typeof route.query.workspace === 'string' ? route.query.workspace : null
+if (workspaceIdFromUrl) {
+  const exists = workspaceManager.workspacesRef.value.some(w => w.id === workspaceIdFromUrl)
+  if (exists) {
+    workspaceManager.setActiveWorkspace(workspaceIdFromUrl)
+  }
+}
 </script>
 
 <template>

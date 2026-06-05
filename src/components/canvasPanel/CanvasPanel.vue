@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, computed, nextTick, onMounted } from 'vue'
 import CanvasWidgetWrapper from './CanvasWidgetWrapper.vue'
-import CanvasItemConfigDialog from './CanvasItemConfigDialog.vue'
+import CanvasItemConfigSidebar from './CanvasItemConfigSidebar.vue'
 import { useDark } from '@vueuse/core'
 import { GridLayout, GridItem } from 'grid-layout-plus'
 import { useDashboardStore, normalizeDashboards, saveItemToConfig, COMPONENT_CONFIGS, type Dashboard, type CanvasItem } from '@/store/dashboardStore'
@@ -142,6 +142,48 @@ const removeItem = (id: number) => {
   }
 }
 
+const duplicateItem = (id: number) => {
+  if (!isEditing.value) return
+  const source = items.value.find(item => item.id === id)
+  if (!source) return
+  const newId = Date.now()
+  const newItem: CanvasItem = {
+    ...source,
+    id: newId,
+    i: newId.toString(),
+    x: source.x + 1,
+    y: source.y + 1,
+    title: `${source.title}(副本)`,
+    config: { ...(source.config || {}) }
+  }
+  items.value.push(newItem)
+  saveLayout()
+}
+
+const editingTitleId = ref<number | null>(null)
+const editingTitleValue = ref('')
+
+const startEditTitle = (item: CanvasItem) => {
+  if (!isEditing.value) return
+  editingTitleId.value = item.id
+  editingTitleValue.value = item.title || ''
+  nextTick(() => {
+    const input = document.querySelector<HTMLInputElement>(`.title-input-${item.id}`)
+    input?.focus()
+    input?.select()
+  })
+}
+
+const finishEditTitle = () => {
+  if (editingTitleId.value === null) return
+  const item = items.value.find(i => i.id === editingTitleId.value)
+  if (item && editingTitleValue.value.trim()) {
+    item.title = editingTitleValue.value.trim()
+    saveLayout()
+  }
+  editingTitleId.value = null
+}
+
 const handleResize = () => {
   window.dispatchEvent(new CustomEvent('resize'))
 }
@@ -151,38 +193,44 @@ const toggleTitleHidden = (item: CanvasItem, value: boolean) => {
   saveLayout()
 }
 
-const configDialogVisible = ref(false)
-const configItem = ref<{
-  id: number
-  type: string
-  title: string
-  titleHidden?: boolean
-  config?: Record<string, any>
-} | null>(null)
+const selectedItemId = ref<number | null>(null)
 
-const openConfigDialog = (item: CanvasItem) => {
-  if (!isEditing.value) return
-  configItem.value = {
+const selectedItem = computed(() => {
+  if (!selectedItemId.value) return null
+  const item = items.value.find(i => i.id === selectedItemId.value)
+  if (!item) return null
+  return {
     id: item.id,
     type: item.type,
     title: item.title || '',
     titleHidden: Boolean(item.titleHidden),
     config: item.config || {}
   }
-  configDialogVisible.value = true
+})
+
+const selectItem = (id: number) => {
+  if (!isEditing.value) return
+  selectedItemId.value = id
 }
 
-const saveItemConfig = (updatedItem: any) => {
-  const index = items.value.findIndex(i => i.id === updatedItem.id)
-  if (index !== -1) {
-    items.value[index] = {
-      ...items.value[index],
-      title: updatedItem.title,
-      titleHidden: Boolean(updatedItem.titleHidden),
-      config: updatedItem.config
+const handleSidebarUpdate = (updatedItem: any) => {
+  const item = items.value.find(i => i.id === updatedItem.id)
+  if (item) {
+    item.title = updatedItem.title
+    item.titleHidden = Boolean(updatedItem.titleHidden)
+    // 逐个更新 config 属性，保持原对象引用，触发 Vue 深层响应式
+    const newConfig = updatedItem.config || {}
+    if (!item.config) item.config = {}
+    for (const key of Object.keys(newConfig)) {
+      item.config[key] = newConfig[key]
     }
     saveLayout()
   }
+}
+
+const handleSidebarDelete = (id: number) => {
+  removeItem(id)
+  selectedItemId.value = null
 }
 
 watch(() => currentDashboardId.value, () => {
@@ -190,7 +238,10 @@ watch(() => currentDashboardId.value, () => {
 }, { immediate: true })
 
 watch(() => profileManager.activeProfile, () => {
+  // 独立模式下（CanvasPage），只加载一次，不再随全局 workspace 切换重载
+  // 避免其他 tab/workspace 切换导致当前画布数据丢失
   if (isEmbedded.value) return
+  if (currentDashboardId.value && !isEmbedded.value) return
   loadDashboardsFromProfile()
 })
 
@@ -237,76 +288,92 @@ onMounted(() => {
         </el-button-group>
       </div>
     </div>
-    <div class="canvas-container" :class="{ 'dark': isDark, 'view-mode': !isEditing }">
-      <grid-layout
-        v-model:layout="items"
-        :col-num="24"
-        :row-height="50"
-        :is-draggable="isEditing"
-        :is-resizable="isEditing"
-        :vertical-compact="true"
-        :use-css-transforms="true"
-        :margin="[10, 10]"
-        @layout-updated="onLayoutChange"
-      >
-        <grid-item
-          v-for="item in items"
-          :key="item.i"
-          :x="item.x"
-          :y="item.y"
-          :w="item.w"
-          :h="item.h"
-          :i="item.i"
-          class="canvas-item"
-          :class="{ 'row-item': item.type === 'row', 'title-hidden': item.titleHidden }"
-          :drag-allow-from="'.item-header'"
-          :drag-ignore-from="'.item-content, button, a, input, textarea, .el-dropdown, .el-select, .el-switch'"
+    <div class="canvas-body">
+      <div class="canvas-container" :class="{ 'dark': isDark, 'view-mode': !isEditing }">
+        <grid-layout
+          v-model:layout="items"
+          :col-num="24"
+          :row-height="50"
           :is-draggable="isEditing"
-          :is-resizable="isEditing && item.resizable"
-          :resizable="isEditing && item.resizable"
-          @resize="handleResize"
+          :is-resizable="isEditing"
+          :vertical-compact="true"
+          :use-css-transforms="true"
+          :margin="[10, 10]"
+          @layout-updated="onLayoutChange"
         >
-          <div class="item-header">
-            <span class="item-title">{{ item.title }}</span>
-            <el-dropdown v-if="isEditing" trigger="click">
-              <el-button class="menu-btn" text>
-                <el-icon><more /></el-icon>
-              </el-button>
-              <template #dropdown>
-                <el-dropdown-menu>
-                  <el-dropdown-item @click="openConfigDialog(item)">
-                    <el-icon><setting /></el-icon>配置
-                  </el-dropdown-item>
-                  <el-dropdown-item @click.stop>
-                    <div class="dropdown-switch-item" @click.stop>
-                      <span>隐藏标题</span>
-                      <el-switch
-                        :model-value="Boolean(item.titleHidden)"
-                        size="small"
-                        @click.stop
-                        @change="(value: string | number | boolean) => toggleTitleHidden(item, Boolean(value))"
-                      />
-                    </div>
-                  </el-dropdown-item>
-                  <el-dropdown-item @click="removeItem(item.id)" divided>
-                    <el-icon><delete /></el-icon>删除
-                  </el-dropdown-item>
-                </el-dropdown-menu>
-              </template>
-            </el-dropdown>
-          </div>
-          <div v-if="item.type !== 'row'" class="item-content">
-            <CanvasWidgetWrapper :type="item.type" :config="item.config" :readonly="effectiveMode === 'edit'" />
-          </div>
-        </grid-item>
-      </grid-layout>
-    </div>
+          <grid-item
+            v-for="item in items"
+            :key="item.i"
+            :x="item.x"
+            :y="item.y"
+            :w="item.w"
+            :h="item.h"
+            :i="item.i"
+            class="canvas-item"
+            :class="{ 'row-item': item.type === 'row', 'title-hidden': item.titleHidden, 'selected': selectedItemId === item.id }"
+            :drag-allow-from="'.item-header'"
+            :drag-ignore-from="'.item-content, button, a, input, textarea, .el-dropdown, .el-select, .el-switch, .title-edit-input'"
+            :is-draggable="isEditing"
+            :is-resizable="isEditing && item.resizable"
+            :resizable="isEditing && item.resizable"
+            @resize="handleResize"
+          >
+            <div class="item-header" @click="selectItem(item.id)">
+              <span
+                v-if="editingTitleId !== item.id"
+                class="item-title"
+                @dblclick="startEditTitle(item)"
+              >{{ item.title }}</span>
+              <input
+                v-else
+                :class="`title-input-${item.id}`"
+                class="title-edit-input"
+                v-model="editingTitleValue"
+                @keyup.enter="finishEditTitle"
+                @blur="finishEditTitle"
+              />
+              <el-dropdown v-if="isEditing" trigger="click">
+                <el-button class="menu-btn" text>
+                  <el-icon><more /></el-icon>
+                </el-button>
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <el-dropdown-item @click.stop>
+                      <div class="dropdown-switch-item" @click.stop>
+                        <span>隐藏标题</span>
+                        <el-switch
+                          :model-value="Boolean(item.titleHidden)"
+                          size="small"
+                          @click.stop
+                          @change="(value: string | number | boolean) => toggleTitleHidden(item, Boolean(value))"
+                        />
+                      </div>
+                    </el-dropdown-item>
+                    <el-dropdown-item @click="duplicateItem(item.id)">
+                      <el-icon><document-copy /></el-icon>复制
+                    </el-dropdown-item>
+                    <el-dropdown-item @click="removeItem(item.id)" divided>
+                      <el-icon><delete /></el-icon>删除
+                    </el-dropdown-item>
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
+            </div>
+            <div v-if="item.type !== 'row'" class="item-content" @click="selectItem(item.id)">
+              <CanvasWidgetWrapper :type="item.type" :config="item.config" :readonly="effectiveMode === 'edit'" />
+            </div>
+          </grid-item>
+        </grid-layout>
+      </div>
 
-    <CanvasItemConfigDialog
-      v-model:visible="configDialogVisible"
-      :item="configItem"
-      @save="saveItemConfig"
-    />
+      <CanvasItemConfigSidebar
+        v-if="isEditing && selectedItemId !== null"
+        :item="selectedItem"
+        @update:item="handleSidebarUpdate"
+        @delete="handleSidebarDelete"
+        @close="selectedItemId = null"
+      />
+    </div>
   </div>
 </template>
 
@@ -316,6 +383,12 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   background: var(--el-bg-color);
+}
+
+.canvas-body {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
 }
 
 .toolbar {
@@ -372,6 +445,11 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+.canvas-item.selected {
+  border-color: var(--el-color-primary);
+  box-shadow: 0 0 0 1px var(--el-color-primary);
 }
 
 .canvas-item.title-hidden {
@@ -453,6 +531,20 @@ onMounted(() => {
 
 .view-mode .item-title {
   cursor: default;
+}
+
+.title-edit-input {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--el-text-color-primary);
+  flex: 1;
+  border: 1px solid var(--el-color-primary);
+  border-radius: 2px;
+  padding: 0 4px;
+  height: 20px;
+  line-height: 20px;
+  background: var(--el-bg-color);
+  outline: none;
 }
 
 .menu-btn {

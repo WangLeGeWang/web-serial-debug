@@ -2,6 +2,7 @@ import { defineAsyncComponent } from 'vue'
 import type { WidgetDefinition, ConfigSchemaField } from '../types'
 
 const DataTable = defineAsyncComponent(() => import('../../components/DataTable.vue'))
+const CanvasDataTable = defineAsyncComponent(() => import('./CanvasDataTable.vue'))
 
 export const dataTableConfigSchema: ConfigSchemaField[] = [
   {
@@ -21,6 +22,7 @@ export const dataTableConfigSchema: ConfigSchemaField[] = [
 export const dataTableWidget: WidgetDefinition = {
   name: '数据表',
   component: DataTable,
+  canvasComponent: CanvasDataTable,
   defaultWidth: 8,
   defaultHeight: 6,
   resizable: true,

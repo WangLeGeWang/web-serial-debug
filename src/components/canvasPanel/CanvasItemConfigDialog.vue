@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useDataSourceFromPlaybackStore } from '@/runtime/source/useDataSourceFromPlaybackStore'
+import { WorkspaceManagerInst } from '@/utils/ProfileManager'
 import { widgetRegistry } from '@/widgets'
 import type { ConfigSchemaField } from '@/widgets/types'
 
@@ -28,8 +29,25 @@ const ds = useDataSourceFromPlaybackStore({ forceMode: 'realtime', includeTimeRa
 
 const localItem = ref<any>(null)
 
+// 合并实时字段 + profile 持久化字段，确保串口未连接时也能选择字段
 const availableFields = computed(() => {
-  return ds.fields.map((key) => ({ label: key, value: key }))
+  void ds.visibleData // 响应式触发器
+  void WorkspaceManagerInst.activeWorkspaceIdRef.value // workspace 切换触发
+
+  const liveKeys = new Set(ds.fields)
+  const profileFields = (WorkspaceManagerInst.activeWorkspace?.config?.fields as any[]) || []
+  const allKeys = new Set<string>()
+
+  // profile 字段优先
+  for (const pf of profileFields) {
+    allKeys.add(pf.key as string)
+  }
+  // 实时新增字段补充
+  for (const k of liveKeys) {
+    allKeys.add(k)
+  }
+
+  return Array.from(allKeys).map(key => ({ label: key, value: key }))
 })
 
 watch(() => props.item, (newItem) => {

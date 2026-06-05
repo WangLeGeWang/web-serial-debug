@@ -60,7 +60,13 @@ export function createDataSource(
 
   function startRealtime(): void {
     reset()
-    unsub = getDataHub().subscribe(query, onFrame)
+    // Seed fields from DataHub's existing knowledge (NamespaceStore)
+    const hub = getDataHub()
+    const known = hub.getLatest(query)
+    for (const k of Object.keys(known)) {
+      if (typeof known[k] === 'number') trackField(k)
+    }
+    unsub = hub.subscribe(query, onFrame)
   }
 
   function startHistory(): void {

@@ -11,18 +11,34 @@ interface SeriesStats {
   current: number
 }
 
+// 图例显示列定义：0=当前值, 1=最小, 2=最大, 3=平均
+const ALL_COLUMNS = [
+  { index: 0, label: 'Current', rightLabel: 'Now' },
+  { index: 1, label: 'Min', rightLabel: 'Min' },
+  { index: 2, label: 'Max', rightLabel: 'Max' },
+  { index: 3, label: 'Avg', rightLabel: 'Avg' },
+]
+
 interface Props {
   data: number[][]
   fields: string[]
   lineColors: string[]
   placement?: 'bottom' | 'right'
+  widthPercent?: number
+  visibleColumns?: number[]
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  placement: 'bottom'
+  placement: 'bottom',
+  widthPercent: 25,
+  visibleColumns: () => [0, 1, 2, 3]
 })
 
 const isDark = useDark()
+
+const activeColumns = computed(() => {
+  return ALL_COLUMNS.filter(c => props.visibleColumns.includes(c.index))
+})
 
 const seriesStats = computed<SeriesStats[]>(() => {
   if (props.fields.length === 0) return []
@@ -67,6 +83,16 @@ const formatValue = (v: number): string => {
   if (abs >= 1) return v.toFixed(2)
   return v.toFixed(4)
 }
+
+const getStatValue = (stat: SeriesStats, colIndex: number): number => {
+  switch (colIndex) {
+    case 0: return stat.current
+    case 1: return stat.min
+    case 2: return stat.max
+    case 3: return stat.avg
+    default: return NaN
+  }
+}
 </script>
 
 <template>
@@ -76,6 +102,7 @@ const formatValue = (v: number): string => {
       `chart-legend--${placement}`,
       isDark ? 'chart-legend--dark' : 'chart-legend--light'
     ]"
+    :style="placement === 'right' ? { width: widthPercent + '%' } : {}"
   >
     <template v-if="placement === 'bottom'">
       <table class="legend-table">
@@ -83,10 +110,7 @@ const formatValue = (v: number): string => {
           <tr>
             <th class="legend-table__color-col"></th>
             <th class="legend-table__name-col">Series</th>
-            <th>Current</th>
-            <th>Min</th>
-            <th>Max</th>
-            <th>Avg</th>
+            <th v-for="col in activeColumns" :key="col.index">{{ col.label }}</th>
           </tr>
         </thead>
         <tbody>
@@ -95,10 +119,9 @@ const formatValue = (v: number): string => {
               <span class="legend-color-dot" :style="{ background: stat.color }"></span>
             </td>
             <td class="legend-table__name-col">{{ stat.field }}</td>
-            <td class="legend-table__value">{{ formatValue(stat.current) }}</td>
-            <td class="legend-table__value">{{ formatValue(stat.min) }}</td>
-            <td class="legend-table__value">{{ formatValue(stat.max) }}</td>
-            <td class="legend-table__value">{{ formatValue(stat.avg) }}</td>
+            <td v-for="col in activeColumns" :key="col.index" class="legend-table__value">
+              {{ formatValue(getStatValue(stat, col.index)) }}
+            </td>
           </tr>
         </tbody>
       </table>
@@ -110,22 +133,10 @@ const formatValue = (v: number): string => {
             <span class="legend-color-dot" :style="{ background: stat.color }"></span>
             <span class="legend-item__name">{{ stat.field }}</span>
           </div>
-          <div class="legend-item__stats">
-            <div class="legend-item__stat">
-              <span class="legend-item__stat-label">Now</span>
-              <span class="legend-item__stat-value">{{ formatValue(stat.current) }}</span>
-            </div>
-            <div class="legend-item__stat">
-              <span class="legend-item__stat-label">Min</span>
-              <span class="legend-item__stat-value">{{ formatValue(stat.min) }}</span>
-            </div>
-            <div class="legend-item__stat">
-              <span class="legend-item__stat-label">Max</span>
-              <span class="legend-item__stat-value">{{ formatValue(stat.max) }}</span>
-            </div>
-            <div class="legend-item__stat">
-              <span class="legend-item__stat-label">Avg</span>
-              <span class="legend-item__stat-value">{{ formatValue(stat.avg) }}</span>
+          <div class="legend-item__stats" :style="{ gridTemplateColumns: `repeat(${activeColumns.length}, 1fr)` }">
+            <div v-for="col in activeColumns" :key="col.index" class="legend-item__stat">
+              <span class="legend-item__stat-label">{{ col.rightLabel }}</span>
+              <span class="legend-item__stat-value">{{ formatValue(getStatValue(stat, col.index)) }}</span>
             </div>
           </div>
         </div>
@@ -155,8 +166,6 @@ const formatValue = (v: number): string => {
 }
 
 .chart-legend--right {
-  min-width: 120px;
-  max-width: 180px;
   overflow-y: auto;
 }
 
@@ -235,7 +244,6 @@ const formatValue = (v: number): string => {
 
 .legend-item__stats {
   display: grid;
-  grid-template-columns: 1fr 1fr;
   gap: 2px 8px;
 }
 

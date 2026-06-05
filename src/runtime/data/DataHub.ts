@@ -1,6 +1,6 @@
 import { NamespaceStore } from './NamespaceStore'
 import type {
-  DataFrame, DataQuery, DataPoint, NamespaceOrigin, HistoryQuery, RecordingId
+  DataFrame, DataQuery, DataPoint, NamespaceOrigin, HistoryQuery, RecordingId, FieldState
 } from './types'
 import type { HubTransport } from '@/runtime/transport/HubTransport'
 import { dataSeriesStorage, type DataSeries, CHUNK_SIZE } from '@/utils/DataSeriesStorage'
@@ -162,6 +162,18 @@ export class DataHub {
       out[key] = f.value
     })
     return out
+  }
+
+  /** 返回指定 namespace 下所有字段的完整状态（包含 value / min / max / avg 等） */
+  getFieldStates(query: DataQuery): FieldState[] {
+    const s = this.namespaces.get(query.namespace)
+    if (!s) return []
+    const result: FieldState[] = []
+    s.fields.forEach((f) => {
+      if (query.fields && !query.fields.includes(f.key)) return
+      result.push(f)
+    })
+    return result
   }
 
   getRealtimeWindow(query: DataQuery, windowMs: number): DataPoint[] {
