@@ -44,6 +44,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 const container = ref<HTMLElement | null>(null)
 const chartAreaEl = ref<HTMLElement | null>(null)
+const tooltipEl = ref<HTMLElement | null>(null)
 const chart = ref<uPlot | null>(null)
 const isDark = useDark()
 
@@ -162,8 +163,18 @@ const onSetCursor = (u: uPlot) => {
   tooltipState.time = timeVal != null ? formatTimeFromEpoch(timeVal as number) : '--'
 
   tooltipState.idx = idx as number
-  tooltipState.leftPx = u.cursor.left ?? 0
-  tooltipState.topPx = u.cursor.top ?? 0
+
+  // u.cursor.left 是相对于 .u-over（绘图区域，不含 y-axis）的坐标
+  // 需要转换为相对于 .chart-area（含 y-axis）的坐标
+  if (chartAreaEl.value && u.over) {
+    const overRect = u.over.getBoundingClientRect()
+    const chartRect = chartAreaEl.value.getBoundingClientRect()
+    tooltipState.leftPx = (overRect.left - chartRect.left) + (u.cursor.left ?? 0)
+    tooltipState.topPx = (overRect.top - chartRect.top) + (u.cursor.top ?? 0)
+  } else {
+    tooltipState.leftPx = u.cursor.left ?? 0
+    tooltipState.topPx = u.cursor.top ?? 0
+  }
 
   let focusedIdx = -1
   let minDist = Infinity
@@ -203,7 +214,7 @@ const tooltipPosition = computed(() => {
   const left = tooltipState.leftPx
   const top = tooltipState.topPx
 
-  const tooltipWidth = 180
+  const tooltipWidth = tooltipEl.value?.offsetWidth || 150
   const chartWidth = chartRect.width
 
   if (left + tooltipWidth + 20 > chartWidth) {
@@ -397,6 +408,7 @@ onUnmounted(() => {
         ></div>
         <div
           v-if="tooltipState.visible && hasData"
+          ref="tooltipEl"
           class="chart-tooltip"
           :class="isDark ? 'chart-tooltip--dark' : 'chart-tooltip--light'"
           :style="tooltipPosition"
@@ -464,6 +476,10 @@ onUnmounted(() => {
 
 .chart-container {
   width: 100%;
+}
+
+.chart-container :deep(.uplot) {
+  width: 100% !important;
 }
 
 .no-data-overlay {
