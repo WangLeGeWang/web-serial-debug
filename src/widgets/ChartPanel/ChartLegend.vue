@@ -26,12 +26,14 @@ interface Props {
   placement?: 'bottom' | 'right'
   widthPercent?: number
   visibleColumns?: number[]
+  hasData?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   placement: 'bottom',
   widthPercent: 25,
-  visibleColumns: () => [0, 1, 2, 3]
+  visibleColumns: () => [0, 1, 2, 3],
+  hasData: true
 })
 
 const isDark = useDark()
@@ -42,6 +44,17 @@ const activeColumns = computed(() => {
 
 const seriesStats = computed<SeriesStats[]>(() => {
   if (props.fields.length === 0) return []
+
+  if (!props.hasData) {
+    return props.fields.map((field, i) => ({
+      field,
+      color: props.lineColors[i % props.lineColors.length],
+      min: NaN,
+      max: NaN,
+      avg: NaN,
+      current: NaN
+    }))
+  }
 
   return props.fields.map((field, i) => {
     const seriesIdx = i + 1
@@ -76,7 +89,7 @@ const seriesStats = computed<SeriesStats[]>(() => {
 })
 
 const formatValue = (v: number): string => {
-  if (isNaN(v)) return '--'
+  if (isNaN(v)) return '-'
   if (Number.isInteger(v)) return v.toString()
   const abs = Math.abs(v)
   if (abs >= 1000) return v.toFixed(1)

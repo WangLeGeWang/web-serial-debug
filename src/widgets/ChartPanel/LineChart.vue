@@ -102,8 +102,8 @@ const effectiveData = computed(() => {
   const count = 31
   const timestamps: number[] = Array.from({ length: count }, (_, i) => start + i * 10)
   const seriesData = props.fields.length > 0
-    ? props.fields.map(() => timestamps.map(() => null as unknown as number))
-    : [timestamps.map(() => null as unknown as number)]
+    ? props.fields.map(() => timestamps.map(() => 0))
+    : [timestamps.map(() => 0)]
   return [timestamps, ...seriesData]
 })
 
@@ -229,9 +229,18 @@ const initUplot = () => {
   const theme = currentTheme.value
   const yRange = props.yRange
 
-  const yRangeConfig = yRange.mode === 'fixed'
-    ? { auto: false, range: [yRange.min ?? 0, yRange.max ?? 100] as [number, number] }
-    : { auto: true, range: undefined }
+  const yRangeConfig = (() => {
+    if (!hasData.value) {
+      if (yRange.mode === 'fixed') {
+        return { auto: false, range: [yRange.min ?? 0, yRange.max ?? 100] as [number, number] }
+      }
+      return { auto: false, range: [0, 10] as [number, number] }
+    }
+    if (yRange.mode === 'fixed') {
+      return { auto: false, range: [yRange.min ?? 0, yRange.max ?? 100] as [number, number] }
+    }
+    return { auto: true, range: undefined }
+  })()
 
   const opts = {
     width: container.value.clientWidth || 200,
@@ -312,6 +321,15 @@ const handleResize = () => {
 }
 
 let resizeObserver: ResizeObserver | null = null
+
+watch(hasData, () => {
+  if (chart.value) {
+    chart.value.destroy()
+    chart.value = null
+  }
+  tooltipState.visible = false
+  initUplot()
+})
 
 watch(() => props.data, (newData) => {
   if (chart.value) {
@@ -436,6 +454,7 @@ onUnmounted(() => {
         :placement="legendPlacement"
         :width-percent="legendWidthPercent"
         :visible-columns="legendColumns"
+        :has-data="hasData"
       />
     </div>
   </div>

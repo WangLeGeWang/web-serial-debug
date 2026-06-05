@@ -41,9 +41,9 @@ const composedYRange = computed(() => {
 })
 
 const chartFields = computed(() => {
+  if (props.fields.length > 0) return props.fields
   const points = ds.visibleData
   if (points.length === 0) return []
-  if (props.fields.length > 0) return props.fields
   return Object.keys(points[0]?.values || {})
 })
 
