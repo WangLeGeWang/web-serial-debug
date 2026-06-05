@@ -13,7 +13,9 @@
     "tauri:build": "cd desktop && tauri build",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "vue-tsc --noEmit"
+    "typecheck": "vue-tsc --noEmit",
+    "mock-serial": "node tools/bus-mock-serial/dist/cli.js",
+    "mock-serial:build": "cd tools/bus-mock-serial && npm run build"
   },
   "dependencies": {
     "@codemirror/commands": "^6.3.3",

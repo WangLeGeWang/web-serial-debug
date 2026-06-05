@@ -1,0 +1,18 @@
+// tools/bus-mock-serial/src/scenarios/imu.ts
+
+import type { ScenarioConfig } from './types.js'
+
+export const imuScenario: ScenarioConfig = {
+  name: 'imu',
+  description: 'IMU 传感器模拟',
+  interval: 50,
+  format: 'csv',
+  fields: [
+    { key: 'pitch', base: 0, range: [-90, 90], noise: 0.02, drift: 0.001 },
+    { key: 'roll', base: 0, range: [-180, 180], noise: 0.02 },
+    { key: 'yaw', base: 0, range: [0, 360], noise: 0.01 },
+    { key: 'ax', base: 0, noise: 0.5 },
+    { key: 'ay', base: 0, noise: 0.5 },
+    { key: 'az', base: 9.8, noise: 0.3 },
+  ]
+}
