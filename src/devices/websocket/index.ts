@@ -212,12 +212,17 @@ export class WebSocketDevice implements IDevice {
 
   private saveConnectedUrl(url: string) {
     if (ProfileManagerInst.activeProfile) {
-      ProfileManagerInst.updateProfile(ProfileManagerInst.activeProfile.id, {
+      const profile = ProfileManagerInst.activeProfile
+      const existingUrls = Array.isArray(profile.config.websocket?.urls)
+        ? profile.config.websocket.urls
+        : []
+      ProfileManagerInst.updateProfile(profile.id, {
         config: {
-          ...ProfileManagerInst.activeProfile.config,
+          ...profile.config,
           websocket: {
-            ...ProfileManagerInst.activeProfile.config.websocket,
-            url
+            ...profile.config.websocket,
+            url,
+            urls: [...existingUrls.filter((u: string) => u !== url), url]
           }
         }
       })
@@ -297,3 +302,4 @@ class WebSocketReader {
 
 export const init = () => WebSocketDevice.init()
 export const request = (url?: string) => WebSocketDevice.request(url || wsConfig.value.url)
+export const normalizeUrl = (url: string) => WebSocketDevice.normalizeUrl(url)

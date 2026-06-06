@@ -314,7 +314,10 @@ const connectDevice = async (device: Device, saveToWorkspace = true) => {
   let port
   try {
     const workspace = activeWorkspace.value
-    const config = workspace?.config?.serial || serialConfig.value
+    // Pass config based on device type
+    const config = device.type === 'websocket'
+      ? (workspace?.config?.websocket || wsConfig.value)
+      : (workspace?.config?.serial || serialConfig.value)
     port = await device.connect(config)
   } catch (error) {
     ElMessage.error('设备连接失败：' + error)
@@ -526,29 +529,34 @@ const authorizeWebSocketDevice = async () => {
       inputErrorMessage: 'URL不能为空'
     }).then(async ({ value }) => {
       if (value) {
-        wsConfig.value.url = value
+        const normalizedUrl = DeviceWebSocket.normalizeUrl(value)
+        wsConfig.value.url = normalizedUrl
         const device = await DeviceWebSocket.request(value)
         if (device) {
           authorizedDevices.value.push(device)
           saveDeviceConfig(device)
           const workspace = activeWorkspace.value
           if (workspace) {
+            const existingUrls = Array.isArray(workspace.config.websocket?.urls)
+              ? workspace.config.websocket.urls
+              : []
             workspaceManager.updateWorkspace(workspace.id, {
               config: {
                 ...workspace.config,
                 websocket: {
                   ...workspace.config.websocket,
-                  url: value
+                  url: normalizedUrl,
+                  urls: [...existingUrls.filter((u: string) => u !== normalizedUrl), normalizedUrl]
                 }
               }
             })
           }
-          ElMessage.success('连接成功')
+          ElMessage.success('授权成功')
         }
       }
     }).catch(() => {})
   } catch (error) {
-    ElMessage.error('连接失败：' + error)
+    ElMessage.error('授权失败：' + error)
   }
 }
 

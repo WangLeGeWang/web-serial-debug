@@ -213,7 +213,7 @@ const FIXED_DASHBOARDS: Dashboard[] = [
       titleHidden: false,
       config: {}
     }],
-    showInTab: true,
+    showInTab: false,
     deletable: false,
     editable: false
   },
@@ -233,7 +233,7 @@ const FIXED_DASHBOARDS: Dashboard[] = [
       titleHidden: false,
       config: {}
     }],
-    showInTab: true,
+    showInTab: false,
     deletable: false,
     editable: false
   }

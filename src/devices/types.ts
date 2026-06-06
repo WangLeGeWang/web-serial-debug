@@ -53,7 +53,7 @@ export const defaultSerialConfig: SerialConfig = {
 }
 
 export const defaultWebSocketConfig: WebSocketConfig = {
-  url: 'ws://localhost:9090',
+  url: 'ws://localhost:8080',
   urls: [],
   reconnect: false,
   reconnectInterval: 3000
