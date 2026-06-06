@@ -104,6 +104,6 @@ export const defaultSendConfig: SendConfig = {
 
 export const defaultLayoutConfig: LayoutConfig = {
   splitPaneSize: 75,
-  leftActiveTab: '0',
+  leftActiveTab: 'console',
   rightActiveTab: '0'
 }
