@@ -18,8 +18,16 @@ export class WsServer {
   }
 
   start(): Promise<void> {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       this.wss = new WebSocketServer({ port: this.port })
+
+      this.wss.on('error', (err: Error) => {
+        if ((err as any).code === 'EADDRINUSE') {
+          reject(new Error(`Port ${this.port} is already in use. Use --ws-port to specify a different port.`))
+        } else {
+          reject(err)
+        }
+      })
 
       this.wss.on('connection', (ws) => {
         this.clients.add(ws)
