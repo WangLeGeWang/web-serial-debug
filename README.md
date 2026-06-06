@@ -1,7 +1,7 @@
-# [BUS Studio](https://qdsang.github.io/web-serial-debug/)
+# [BUS Studio](https://qdsang.github.io/bus-studio/)
 
 Bus Studio 串口监听和调试， 支持 UART、蓝牙、websocket、stlink等等。
-提供WEB网页 和 桌面端版本。 [https://qdsang.github.io/web-serial-debug/](https://qdsang.github.io/web-serial-debug/)
+提供WEB网页 和 桌面端版本。 [https://qdsang.github.io/bus-studio/](https://qdsang.github.io/bus-studio/)
 
 ## Demo
 

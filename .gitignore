@@ -23,7 +23,7 @@ dist-ssr
 *.sln
 *.sw?
 
-web-serial-debug
+bus-studio
 
 # Tauri desktop build artifacts
 desktop/src-tauri/target
