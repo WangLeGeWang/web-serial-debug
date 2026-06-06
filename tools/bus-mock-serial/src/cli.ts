@@ -53,7 +53,7 @@ const program = new Command()
   .option('--scenario <name>', 'Scenario name (imu/telemetry) or YAML file path', 'imu')
   .option('--mode <mode>', 'Output mode: serial/ws/both', 'both')
   .option('--baudrate <rate>', 'Serial baud rate (informational only)', '115200')
-  .option('--ws-port <port>', 'WebSocket server port', '8081')
+  .option('--ws-port <port>', 'WebSocket server port', '9090')
   .option('--interval <ms>', 'Override data output interval (ms)')
   .option('--format <fmt>', 'Override data format: csv/json/hex')
   .action(async (opts) => {
