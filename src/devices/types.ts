@@ -39,6 +39,7 @@ export interface SerialConfig {
 
 export interface WebSocketConfig {
   url: string
+  urls: string[]
   reconnect: boolean
   reconnectInterval: number
 }
@@ -53,6 +54,7 @@ export const defaultSerialConfig: SerialConfig = {
 
 export const defaultWebSocketConfig: WebSocketConfig = {
   url: 'ws://localhost:8080',
+  urls: [],
   reconnect: false,
   reconnectInterval: 3000
 }

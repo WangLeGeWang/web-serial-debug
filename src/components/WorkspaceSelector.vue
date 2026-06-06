@@ -470,6 +470,7 @@ onMounted(() => {
   DeviceBluetooth.init()
   DeviceWebSTLink.init()
   DeviceDAPLink.init()
+  DeviceWebSocket.init()
 })
 
 onUnmounted(() => {
@@ -481,6 +482,7 @@ const authorizeSerialDevice = async () => {
     const device = await DeviceSerialPort.request()
     if (device) {
       authorizedDevices.value.push(device)
+      saveDeviceConfig(device)
       ElMessage.success('授权成功')
     }
   } catch (error) {
@@ -493,6 +495,7 @@ const authorizeWebUSBDevice = async () => {
     const device = await DeviceWebUSB.request()
     if (device) {
       authorizedDevices.value.push(device as unknown as Device)
+      saveDeviceConfig(device as unknown as Device)
       ElMessage.success('授权成功')
     }
   } catch (error) {
@@ -505,6 +508,7 @@ const authorizeBluetoothDevice = async () => {
     const device = await DeviceBluetooth.request()
     if (device) {
       authorizedDevices.value.push(device as unknown as Device)
+      saveDeviceConfig(device as unknown as Device)
       ElMessage.success('授权成功')
     }
   } catch (error) {
@@ -526,6 +530,19 @@ const authorizeWebSocketDevice = async () => {
         const device = await DeviceWebSocket.request(value)
         if (device) {
           authorizedDevices.value.push(device)
+          saveDeviceConfig(device)
+          const workspace = activeWorkspace.value
+          if (workspace) {
+            workspaceManager.updateWorkspace(workspace.id, {
+              config: {
+                ...workspace.config,
+                websocket: {
+                  ...workspace.config.websocket,
+                  url: value
+                }
+              }
+            })
+          }
           ElMessage.success('连接成功')
         }
       }
@@ -540,6 +557,7 @@ const authorizeWebSTLinkDevice = async () => {
     const device = await DeviceWebSTLink.request()
     if (device) {
       authorizedDevices.value.push(device as unknown as Device)
+      saveDeviceConfig(device as unknown as Device)
       ElMessage.success('授权成功')
     }
   } catch (error) {
@@ -552,6 +570,7 @@ const authorizeDAPLinkDevice = async () => {
     const device = await DeviceDAPLink.request()
     if (device) {
       authorizedDevices.value.push(device as unknown as Device)
+      saveDeviceConfig(device as unknown as Device)
       ElMessage.success('授权成功')
     }
   } catch (error) {
@@ -561,6 +580,7 @@ const authorizeDAPLinkDevice = async () => {
 
 const handleDeviceSelect = async (device: Device) => {
   showWorkspacePopover.value = false
+  saveDeviceConfig(device)
   if (isConnected.value && connectedDeviceId.value !== device.id) {
     await disconnectDevice()
   }
@@ -571,6 +591,11 @@ const handleDeviceSelect = async (device: Device) => {
 
 const handleDeviceItemClick = async (device: unknown) => {
   await handleDeviceSelect(device as Device)
+}
+
+const isDefaultDevice = (device: { id: string }) => {
+  const savedDevice = activeWorkspace.value?.config?.savedDevice as { deviceId?: string } | undefined
+  return savedDevice?.deviceId === device.id
 }
 
 const getDeviceTypeLabel = (type: string) => {
@@ -666,7 +691,7 @@ const testWorkspaceDevice = async () => {
             v-for="device in authorizedDevices" 
             :key="device.id"
             class="device-item"
-            :class="{ active: connectedDeviceId === device.id }"
+            :class="{ active: connectedDeviceId === device.id, default: isDefaultDevice(device) }"
             @click="handleDeviceItemClick(device)"
           >
             <div class="device-info">
@@ -1027,7 +1052,8 @@ const testWorkspaceDevice = async () => {
   padding: 6px 12px;
   cursor: pointer;
   border-radius: 4px;
-  transition: background 0.2s;
+  border: 1px solid transparent;
+  transition: background 0.2s, border-color 0.2s;
 }
 
 .device-item:hover {
@@ -1036,6 +1062,10 @@ const testWorkspaceDevice = async () => {
 
 .device-item.active {
   background: var(--el-color-primary-light-9);
+}
+
+.device-item.default {
+  border-color: var(--el-color-primary);
 }
 
 .device-info {

@@ -2,7 +2,7 @@ import { ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { authorizedDevices, type Device, type IDevice, type DeviceInfo } from '../types'
 import { ConfigManager } from '../../utils/ConfigManager'
-import { ProfileManagerInst } from '../../utils/ProfileManager'
+import { ProfileManagerInst, WorkspaceManagerInst } from '../../utils/ProfileManager'
 
 const configManager = ConfigManager.getInstance()
 const wsConfig = configManager.useConfig('websocket')
@@ -48,24 +48,42 @@ export class WebSocketDevice implements IDevice {
     }
   }
 
+  static normalizeUrl(url: string): string {
+    if (!url.startsWith('ws://') && !url.startsWith('wss://')) {
+      return 'ws://' + url
+    }
+    return url
+  }
+
   static async init(): Promise<void> {
-    const profile = ProfileManagerInst.activeProfile
-    const savedUrls = profile?.config?.websocket?.url ? [profile.config.websocket.url] : []
-    for (const url of savedUrls) {
+    // Collect WS URLs from ALL workspaces (not just active)
+    const allUrls: string[] = []
+    const workspaces = WorkspaceManagerInst.workspacesRef.value
+    for (const workspace of workspaces) {
+      const wsConf = workspace.config?.websocket
+      if (wsConf?.url) allUrls.push(WebSocketDevice.normalizeUrl(wsConf.url))
+      if (Array.isArray(wsConf?.urls)) {
+        for (const u of wsConf.urls) allUrls.push(WebSocketDevice.normalizeUrl(u))
+      }
+    }
+
+    // Deduplicate
+    const uniqueUrls = [...new Set(allUrls)]
+
+    for (const url of uniqueUrls) {
       try {
+        // Create device without requiring live connection
+        // Create WS briefly for device object, then close immediately (like request() does)
         const ws = new WebSocket(url)
-        await new Promise<void>((resolve, reject) => {
-          ws.onopen = () => resolve()
-          ws.onerror = () => reject(new Error('Connection failed'))
-          setTimeout(() => reject(new Error('Connection timeout')), 5000)
-        })
         const device = new WebSocketDevice(ws, url)
+        ws.close()
+
         const existing = authorizedDevices.value.find(d => d.id === device.id)
         if (!existing) {
           authorizedDevices.value.push(device as unknown as Device)
         }
       } catch (error) {
-        console.warn(`Failed to restore WebSocket connection: ${url}`, error)
+        console.warn(`Failed to restore WebSocket device: ${url}`, error)
       }
     }
   }
